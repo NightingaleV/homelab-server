@@ -1,0 +1,35 @@
+services:
+  calibre:
+    image: lscr.io/linuxserver/calibre:latest
+    container_name: calibre
+    security_opt:
+      - seccomp:unconfined # Required for GUI apps
+    environment:
+      - PUID=3005
+      # - PGID=1337
+      - TZ=Europe/Prague
+      # - PASSWORD=yourpassword  # Optional - set a password for Calibre GUI
+    volumes:
+      - /mnt/nas/Media/Books:/config
+    ports:
+      - "5758:8080"  # Calibre GUI
+      - "8181:8181"  # Optional: HTTPS for GUI
+    restart: unless-stopped
+
+  calibre-web:
+    image: lscr.io/linuxserver/calibre-web:latest
+    container_name: calibre-web
+    depends_on:
+      - calibre
+    environment:
+      - PUID=3005
+      # - PGID=1337
+      - TZ=Europe/Prague
+      - DOCKER_MODS=linuxserver/mods:universal-calibre  # Enables full Calibre features
+    volumes:
+      - /mnt/nas/DockerServices/calibre/calibre-web-config:/config
+      - /mnt/nas/Media/Books:/books
+    ports:
+      - "5757:8083"  # Web UI for browsing books
+    restart: unless-stopped
+    

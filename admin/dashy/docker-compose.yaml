@@ -1,0 +1,22 @@
+services:
+  dashy:
+    image: lissy93/dashy
+    container_name: Dashy
+    restart: unless-stopped
+    network_mode: host  # Use host networking
+    ports:
+      - "4000:8080"
+    environment:
+      - NODE_ENV=production
+      - DASHY_ENABLE_PROXY=true
+      - PROXY_ENABLED=true
+      - NODE_TLS_REJECT_UNAUTHORIZED=0  # Temporarily bypass SSL verification
+      - GID=1337
+    volumes:
+      - /mnt/nas/DockerServices/dashy/config:/app/user-data
+    healthcheck:
+      test: ['CMD', 'node', '/app/services/healthcheck']
+      interval: 1m30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

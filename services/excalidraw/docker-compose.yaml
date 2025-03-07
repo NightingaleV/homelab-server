@@ -1,0 +1,14 @@
+services:
+  excalidraw:
+    stdin_open: true
+    tty: true
+    container_name: excalidraw
+    ports:
+        - 6001:80
+    healthcheck:
+      disable: true
+    environment:
+      - NODE_ENV=production
+    volumes:
+        - /mnt/nas/DockerServices/excalidraw:/opt/node_app
+    image: excalidraw/excalidraw:latest

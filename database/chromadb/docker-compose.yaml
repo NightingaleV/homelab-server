@@ -1,0 +1,62 @@
+networks:
+  net:
+    driver: bridge
+services:
+  chromadb:
+    image: chromadb/chroma:0.6.3
+    container_name: chromadb
+    restart: unless-stopped # possible values are: "no", always", "on-failure", "unless-stopped"
+    volumes:
+      - /mnt/nas/DockerServices/chromadb:/chroma/chroma
+    environment:
+      # - transformer_api: "http://transformer:5000/v1/embed"
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma # this is the default path, change it as needed
+      - ANONYMIZED_TELEMETRY=FALSE
+    ports:
+      - 5001:8000
+      # http://localhost:5001/docs
+    healthcheck: 
+      test: ["CMD-SHELL", "curl localhost:5001/api/v1/heartbeat || exit 1"]
+      interval: 60s
+      retries: 2
+      start_period: 5s
+      timeout: 10s
+    networks:
+      - net
+  vector-admin-postgres:
+    container_name: vector-admin-postgres
+    image: postgres:16-alpine
+    restart: always
+    expose:
+      - "5433"
+    ports:
+      - "5433:5433"
+    command: -p 5433
+    volumes:
+      - /mnt/nas/DockerServices/vector-admin/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: 'vectoradmin'
+      POSTGRES_PASSWORD: '${VECTOR_ADMIN_DB_PASSWORD}'
+      POSTGRES_DB: 'vectoradmin'
+    networks:
+      - net
+  vector-admin: # Template: https://github.com/3x3cut0r/vps/blob/main/docker/compose/vector-admin/docker-compose.yml
+    image: mintplexlabs/vectoradmin
+    container_name: vector-admin
+    ports:
+      - "5002:3001"
+    env_file:
+      - local.env
+    environment:
+      - SERVER_PORT=3001
+      - JWT_SECRET=${VECTOR_ADMIN_JWT_SECRET}
+      - INNGEST_EVENT_KEY=background_workers
+      - INNGEST_SIGNING_KEY=${VECTOR_ADMIN_INNGEST_SIGNING_KEY}
+      - INNGEST_LANDING_PAGE=true
+      - DATABASE_CONNECTION_STRING=${VECTOR_ADMIN_DB_CONNECTION_STRING}
+    depends_on:
+      - chromadb
+      - vector-admin-postgres
+    networks:
+      - net

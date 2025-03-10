@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+
+  ui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: ollama-ui
+    restart: always
+    ports:
+      - 7000:8080 # Web UI
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/ollama/open-webui:/app/backend/data
+    environment:
+      # - "ENABLE_SIGNUP=false"
+      - "OLLAMA_BASE_URL=http://172.19.0.3:11434"
+    networks:
+      - ai-network
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    ports:
+      - 11434:11434 # Web UI
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/ollama/data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+                - gpu
+    networks:
+      - ai-network
+
+networks:
+  ai-network:
+    external: true

@@ -2,14 +2,13 @@ services:
 
   ui:
     image: ghcr.io/open-webui/open-webui:main
+    
     container_name: ollama-ui
     restart: always
     ports:
-      - 8080:8080 # web ui
-    expose:
-      - 8080
+      - 7000:8080 # web ui
     volumes:
-      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/ollama/open-webui:/app/backend/data
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/ollama/open-webui:/app/backend/data
     environment:
       #- "ENABLE_SIGNUP=false"
       - "OLLAMA_BASE_URL=http://ollama:11434"
@@ -22,6 +21,7 @@ services:
     #  - traefik.http.services.ollama-ui.loadbalancer.server.port=8080
     #  # Optional part for traefik middlewares
     #  - traefik.http.routers.ollama-ui.middlewares=local-ipwhitelist@file,authelia@docker
+    
 
   ollama:
     image: ollama/ollama:latest
@@ -30,16 +30,66 @@ services:
     expose:
       - 11434
     volumes:
-      - ${DOCKER_VOLUME_STORAGE:-/mnt/docker-volumes}/ollama/data:/root/.ollama
-    #deploy:
-    #  resources:
-    #    reservations:
-    #      devices:
-    #        - driver: nvidia
-    #          count: all
-    #          capabilities: [gpu]      
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/ollama/data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+                - gpu      
     #networks:
     #  - proxy
+
+  tika:
+    ports:
+      - 9998:9998
+    image: apache/tika:latest-full
+    restart: always
+
+  redis:
+    container_name: redis
+    image: docker.io/valkey/valkey:7-alpine
+    command: valkey-server --save 30 1 --loglevel warning
+    restart: unless-stopped
+    volumes:
+      - valkey-data2:/data
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    logging:
+      driver: json-file
+      options:
+        max-size: 4m
+        max-file: "1"
+  searxng:
+    container_name: searxng
+    image: docker.io/searxng/searxng:latest
+    restart: unless-stopped
+    networks:
+      - searxng_searxng
+    ports:
+      - 7777:8080
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/searxng/img:/usr/local/searxng/searx/static/themes/simple/img:rw
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://${SEARXNG_HOSTNAME:-localhost}/
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    logging:
+      driver: json-file
+      options:
+        max-size: 4m
+        max-file: "1"
 
 #networks:
 #  proxy:

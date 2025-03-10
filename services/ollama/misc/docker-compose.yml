@@ -1,0 +1,65 @@
+version: "3.9"
+
+services:
+
+  redis:
+    container_name: redis
+    image: docker.io/valkey/valkey:7-alpine
+    command: valkey-server --save 30 1 --loglevel warning
+    restart: unless-stopped
+    volumes:
+      - valkey-data:/data
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    logging:
+      driver: json-file
+      options:
+        max-size: 4m
+        max-file: "1"
+    networks:
+      - ai-network
+
+  searxng:
+    container_name: searxng
+    image: docker.io/searxng/searxng:latest
+    restart: unless-stopped
+    ports:
+      - 7777:8080
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/searxng/img:/usr/local/searxng/searx/static/themes/simple/img:rw
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://${SEARXNG_HOSTNAME:-localhost}/
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    logging:
+      driver: json-file
+      options:
+        max-size: 4m
+        max-file: "1"
+    networks:
+      - ai-network
+
+  tika:
+    container_name: tika
+    image: apache/tika:latest-full
+    restart: always
+    ports:
+      - 9998:9998
+    networks:
+      - ai-network
+
+volumes:
+  valkey-data:
+
+networks:
+  ai-network:
+    external: true

@@ -1,0 +1,8 @@
+:3128 {
+    forward_proxy {
+        basic_auth USERNAME PASSWORD  # Optional authentication
+        hide_ip
+        hide_via
+        probe_resistance SECRET-PATH
+    }
+}

@@ -1,0 +1,10 @@
+:3128 {
+    forward_proxy {
+        tls /etc/caddy/caddy.crt /etc/caddy/caddy.key
+        basic_auth USERNAME PASSWORD  # Optional authentication
+        ports 80 443 3128
+        hide_ip
+        hide_via
+        probe_resistance secret-proxy-link
+    }
+}

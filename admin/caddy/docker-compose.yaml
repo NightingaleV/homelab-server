@@ -1,0 +1,21 @@
+services:
+
+  caddy:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: caddy
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Berlin
+      - CADDY_DISABLE_HTTP3=1 
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8088:8088"
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/caddy/caddy.crt:/etc/caddy/caddy.crt
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/caddy/caddy.key:/etc/caddy/caddy.key
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/caddy/data:/data
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/caddy/config:/config

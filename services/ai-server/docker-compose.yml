@@ -1,0 +1,230 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    ports:
+      - 11434:11434 # Web UI
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/ollama/data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+                - gpu
+    networks:
+      - ai-network
+  ui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openweb-ui
+    restart: always
+    ports:
+      - 7000:8080 # Web UI
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/ollama/open-webui:/app/backend/data
+    environment:
+      # - "ENABLE_SIGNUP=false"
+      - "OLLAMA_BASE_URL=http://ollama:11434"
+      # - CHROMA_HTTP_HOST=chromadb
+      # - CHROMA_HTTP_PORT=8000
+      # - CHROMA_TENANT=default_tenant
+      # - VECTOR_DB=chroma
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=nomic-embed-text-v1.5
+      - RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE=true
+    networks:
+      - ai-network
+  litellm: # Template: https://docs.litellm.ai/docs/proxy/deploy#docker-compose
+    build:
+      context: .
+      args:
+        target: runtime
+    env_file:
+      - .env # Load local .env file
+    image: ghcr.io/berriai/litellm:main-stable
+    environment:
+      DATABASE_URL: "${LITELLM_DB_CONNECTION}"
+      STORE_MODEL_IN_DB: "True" # allows adding models to proxy via UI
+    ports:
+      - "7001:4000" # Map the container port to the host, change the host port if necessary
+    # volumes:
+      # - ./litellm-config.yaml:/app/config.yaml # Mount the local configuration file
+    # You can change the port or number of workers as per your requirements or pass any new supported CLI augument. Make sure the port passed here matches with the container port defined above in `ports` value
+    # "--config", "/app/config.yaml", 
+    command: [ "--port", "4000", "--num_workers", "3" ]
+    networks:
+      - ai-network
+    depends_on:
+      - vector-admin-postgres
+    healthcheck:  # Defines the health check configuration for the container
+      test: [ "CMD", "curl", "-f", "http://localhost:4000/health/liveliness || exit 1" ]  # Command to execute for health check
+      interval: 30s  # Perform health check every 30 seconds
+      timeout: 10s   # Health check command times out after 10 seconds
+      retries: 3     # Retry up to 3 times if health check fails
+      start_period: 40s  # Wait 40 seconds after container start before beginning health checks
+  n8n:
+    container_name: n8n
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+    environment:
+    - DB_TYPE=postgresdb
+    - DB_POSTGRESDB_HOST=vector-admin-postgres
+    - DB_POSTGRESDB_USER=vectoradmin
+    - DB_POSTGRESDB_PASSWORD=${VECTOR_ADMIN_DB_PASSWORD}
+    - DB_POSTGRESDB_DATABASE=n8n
+    - N8N_DIAGNOSTICS_ENABLED=false
+    - N8N_PERSONALIZATION_ENABLED=true
+    - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+    - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+    ports:
+      - 7002:5678
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/n8n/storage:/home/node/.n8n
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/n8n/backup:/backup
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/n8n/shared:/data/shared
+    depends_on:
+      - vector-admin-postgres
+    networks:
+      - ai-network
+  flowise:
+    image: flowiseai/flowise
+    restart: unless-stopped
+    container_name: flowise
+    environment:
+        - PORT=3001
+    ports:
+        - 7003:3001   
+    volumes:
+        - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/flowise:/root/.flowise
+    entrypoint: /bin/sh -c "sleep 3; flowise start"
+    networks:
+      - ai-network
+  qdrant:
+    image: qdrant/qdrant
+    container_name: qdrant
+    restart: unless-stopped
+    ports:
+      - 6333:6333
+      - 6334:6334
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/qdrant/storage:/qdrant/storage
+    networks:
+      - ai-network
+  chromadb:
+    image: chromadb/chroma:0.6.3
+    container_name: chromadb
+    restart: unless-stopped # possible values are: "no", always", "on-failure", "unless-stopped"
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/chromadb:/chroma/chroma
+    environment:
+      # - transformer_api: "http://transformer:5000/v1/embed"
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma # this is the default path, change it as needed
+      - ANONYMIZED_TELEMETRY=FALSE
+      - CHROMA_SERVER_AUTHN_CREDENTIALS=${CHROMEDB_API_TOKEN}
+      - CHROMA_AUTH_TOKEN_TRANSPORT_HEADER=Authorization
+      - CHROMA_SERVER_AUTHN_PROVIDER=chromadb.auth.token_authn.TokenAuthenticationServerProvider
+    ports:
+      - 5001:8000
+      # http://localhost:5001/docs
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/v2/heartbeat" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - ai-network
+  vector-admin: # Template: https://github.com/3x3cut0r/vps/blob/main/docker/compose/vector-admin/docker-compose.yml
+    image: mintplexlabs/vectoradmin
+    container_name: vector-admin
+    ports:
+      - '7005:3001'
+      - '3355:3355'
+      - '8288:8288'
+    env_file:
+      - .env
+    environment:
+      - SERVER_PORT=3001
+      - JWT_SECRET=${VECTOR_ADMIN_JWT_SECRET}
+      - INNGEST_EVENT_KEY=background_workers
+      - INNGEST_SIGNING_KEY=${VECTOR_ADMIN_INNGEST_SIGNING_KEY}
+      - INNGEST_LANDING_PAGE=true
+      - DATABASE_CONNECTION_STRING=${VECTOR_ADMIN_DB_CONNECTION_STRING}
+    depends_on:
+      - chromadb
+      - qdrant
+      - vector-admin-postgres
+    volumes:
+      - "${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/vector-admin/.env:/app/backend/.env"
+      - "${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/vector-admin/backend/storage:/app/backend/storage"
+      - "${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/vector-admin/document-processor/hotdir/:/app/document-processor/hotdir"
+    networks:
+      - ai-network
+  vector-admin-postgres:
+    container_name: vector-admin-postgres
+    image: postgres:16-alpine
+    restart: always
+    expose:
+      - "5433"
+    ports:
+      - "5433:5433"
+    command: -p 5433
+    volumes:
+      - /mnt/nas/DockerServices/vector-admin/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: 'vectoradmin'
+      POSTGRES_PASSWORD: '${VECTOR_ADMIN_DB_PASSWORD}'
+      POSTGRES_DB: 'vectoradmin'
+    networks:
+      - ai-network
+  redis:
+    container_name: redis
+    image: docker.io/valkey/valkey:7-alpine
+    command: valkey-server --save 30 1 --loglevel warning
+    restart: unless-stopped
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/valkey:/data
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    logging:
+      driver: json-file
+      options:
+        max-size: 4m
+        max-file: "1"
+    networks:
+      - ai-network
+  searxng:
+    container_name: searxng
+    image: docker.io/searxng/searxng:latest
+    restart: unless-stopped
+    ports:
+      - 7777:8080
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/searxng:/etc/searxng:rw
+    environment:
+      - SEARXNG_BASE_URL=http://${SEARXNG_HOSTNAME:-localhost}/
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+    logging:
+      driver: json-file
+      options:
+        max-size: 4m
+        max-file: "1"
+    networks:
+      - ai-network
+    
+networks:
+  ai-network:
+    external: true
+  

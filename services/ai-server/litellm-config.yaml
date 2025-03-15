@@ -1,0 +1,16 @@
+model_list:
+  - model_name: openai
+    litellm_params:
+      model: openai/gpt-3.5-turbo
+      api_base: https://api.openai.com/v1
+      api_key: sk-your-openai-api-key
+      temperature: 0.7
+      max_tokens: 100
+
+  - model_name: deepseek
+    litellm_params:
+      model: deepseek/default-model
+      api_base: https://api.deepseek.ai/v1
+      api_key: sk-your-deepseek-api-key
+      temperature: 0.5
+      max_tokens: 150

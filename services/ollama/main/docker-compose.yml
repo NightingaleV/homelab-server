@@ -12,7 +12,14 @@ services:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/ollama/open-webui:/app/backend/data
     environment:
       # - "ENABLE_SIGNUP=false"
-      - "OLLAMA_BASE_URL=http://172.19.0.3:11434"
+      - "OLLAMA_BASE_URL=http://ollama:11434"
+      # - CHROMA_HTTP_HOST=chromadb
+      # - CHROMA_HTTP_PORT=8000
+      # - CHROMA_TENANT=default_tenant
+      # - VECTOR_DB=chroma
+      - RAG_EMBEDDING_ENGINE=ollama
+      - RAG_EMBEDDING_MODEL=nomic-embed-text-v1.5
+      - RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE=true
     networks:
       - ai-network
 

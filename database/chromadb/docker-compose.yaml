@@ -1,6 +1,9 @@
 networks:
   net:
     driver: bridge
+  ai-network:
+    external: true
+
 services:
   chromadb:
     image: chromadb/chroma:0.6.3
@@ -27,6 +30,7 @@ services:
       retries: 3
     networks:
       - net
+      - ai-network
   vector-admin-postgres:
     container_name: vector-admin-postgres
     image: postgres:16-alpine
@@ -69,3 +73,4 @@ services:
       - "/mnt/nas/DockerServices/vector-admin/document-processor/hotdir/:/app/document-processor/hotdir"
     networks:
       - net
+      - ai-network

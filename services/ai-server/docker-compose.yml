@@ -25,16 +25,30 @@ services:
       - 7000:8080 # Web UI
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/ollama/open-webui:/app/backend/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # - "ENABLE_SIGNUP=false"
       - "OLLAMA_BASE_URL=http://ollama:11434"
-      # - CHROMA_HTTP_HOST=chromadb
-      # - CHROMA_HTTP_PORT=8000
+      - DATABASE_URL=${OPENWEBUI_DB_STRING}
       # - CHROMA_TENANT=default_tenant
-      # - VECTOR_DB=chroma
+      - VECTOR_DB=chroma
+      - CHROMA_HTTP_HOST=http://host.docker.internal
+      - CHROMA_DATABASE=openwebuid-db
+      - CHROMA_HTTP_PORT=5001
+      - CHROMA_HTTP_HEADERS=Authorization=Bearer ${CHROMEDB_API_TOKEN}
+      - CHROMA_HTTP_SSL=False
+      - CHROMA_CLIENT_AUTH_PROVIDER=chromadb.auth.token_authn.TokenAuthClientProvider
+      - CHROMA_CLIENT_AUTH_CREDENTIALS=${CHROMEDB_API_TOKEN}
       - RAG_EMBEDDING_ENGINE=ollama
       - RAG_EMBEDDING_MODEL=nomic-embed-text-v1.5
       - RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE=true
+      - RAG_TOP_K=5
+      - ENABLE_WEBSOCKET_SUPPORT=true
+      - WEBSOCKET_MANAGER=redis
+      - WEBSOCKET_REDIS_URL=redis://host.docker.internal:6379/1
+      - CONTENT_EXTRACTION_ENGINE=tika
+      - TIKA_SERVER_URL=http://host.docker.internal:9998
     networks:
       - ai-network
   litellm: # Template: https://docs.litellm.ai/docs/proxy/deploy#docker-compose
@@ -55,6 +69,8 @@ services:
     # You can change the port or number of workers as per your requirements or pass any new supported CLI augument. Make sure the port passed here matches with the container port defined above in `ports` value
     # "--config", "/app/config.yaml", 
     command: [ "--port", "4000", "--num_workers", "3" ]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - ai-network
     depends_on:
@@ -65,6 +81,53 @@ services:
       timeout: 10s   # Health check command times out after 10 seconds
       retries: 3     # Retry up to 3 times if health check fails
       start_period: 40s  # Wait 40 seconds after container start before beginning health checks
+  # Reference: https://github.com/Mintplex-Labs/anything-llm/blob/master/docker/.env.example
+  anythingllm:
+    image: mintplexlabs/anythingllm:latest
+    container_name: anythingllm
+    ports:
+      - 7004:3001
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - SYS_ADMIN
+    networks:
+      - ai-network
+    environment:
+    # TODO: Potentially change to Embeddings
+    # Adjust for your environment
+      - SERVER_PORT=3001
+      - STORAGE_DIR=/app/server/storage
+      - JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+      # - LLM_PROVIDER=ollama
+      # - OLLAMA_BASE_PATH=http://ollama:11434
+      # - OLLAMA_MODEL_PREF=llama2
+      # - OLLAMA_MODEL_TOKEN_LIMIT=8192
+      - LLM_PROVIDER=litellm
+      - LITE_LLM_MODEL_PREF=deepseek-chat
+      - LITE_LLM_MODEL_TOKEN_LIMIT=8192
+      - LITE_LLM_BASE_PATH=http://host.docker.internal:7001
+      - LITE_LLM_API_KEY=${LITELLM_API_TOKEN}
+      - EMBEDDING_ENGINE=ollama
+      - EMBEDDING_BASE_PATH=http://host.docker.internal:11434
+      - EMBEDDING_MODEL_PREF=nomic-embed-text:latest
+      - EMBEDDING_MODEL_MAX_CHUNK_LENGTH=8192
+      - VECTOR_DB=chroma
+      - CHROMA_ENDPOINT=http://host.docker.internal:5001
+      - CHROMA_API_HEADER=Authorization
+      - CHROMA_API_KEY=${CHROMEDB_API_TOKEN}
+      - WHISPER_PROVIDER=local
+      - TTS_PROVIDER=native
+      - PASSWORDMINCHAR=6
+      - AGENT_SEARXNG_API_URL=http://searxng:7777
+      # Add any other keys here for services or settings
+      # you can find in the docker/.env.example file
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/anythingllm:/app/server/storage
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   n8n:
     container_name: n8n
     image: n8nio/n8n:latest
@@ -180,7 +243,7 @@ services:
       POSTGRES_DB: 'vectoradmin'
     networks:
       - ai-network
-  redis:
+  redis: # Reference: https://docs.openwebui.com/tutorials/integrations/redis
     container_name: redis
     image: docker.io/valkey/valkey:7-alpine
     command: valkey-server --save 30 1 --loglevel warning
@@ -198,6 +261,12 @@ services:
       options:
         max-size: 4m
         max-file: "1"
+    healthcheck:
+      test: "[ $$(valkey-cli ping) = 'PONG' ]"
+      start_period: 5s
+      interval: 1s
+      timeout: 3s
+      retries: 5
     networks:
       - ai-network
   searxng:
@@ -223,6 +292,18 @@ services:
         max-file: "1"
     networks:
       - ai-network
+  tika:
+    container_name: tika
+    image: apache/tika:latest-full
+    restart: always
+    ports:
+      - 9998:9998
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - ai-network
+    # volumes:
+      # - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/_homelab/services/ai-server/tika-config.xml:/tika-config.xml
     
 networks:
   ai-network:

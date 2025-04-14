@@ -3,7 +3,7 @@ version: '3.8'
 services:
   adguardhome:
     image: adguard/adguardhome:latest
-    container_name: adguardhome
+    container_name: adguard
     ports:
       # Map DNS ports directly to the host LXC. Ensure these ports aren't already used.
       - "53:53/tcp"
@@ -34,24 +34,33 @@ services:
       # Expose HTTP and HTTPS ports
       - "80:80"
       - "443:443"
+      # - 127.0.0.1:8081:8080 # http api dashboard
       # Expose Traefik Dashboard (optional, secure it later!)
       # - "8081:8080" # Be careful, AdGuard uses 8080 in this example
+    expose:
+      - 80 # http
+      - 443 # https
+      - 8081 # http api dashboard
     environment:
       # Cloudflare API Token (Create a token with Zone:DNS:Edit permissions for slavik.tech)
       # Go to Cloudflare -> My Profile -> API Tokens -> Create Token -> Use "Edit zone DNS" template
-      - CF_API_TOKEN=YOUR_CLOUDFLARE_API_TOKEN_HERE
+      - TZ=Europe/Prague # Set your timezone
+      - CF_DNS_API_TOKEN=${CLOUDFLARE_API_TOKEN} # Set this in your environment or .env file
       # Alternative: Use Global API Key (less secure)
-      # - CF_API_EMAIL=your-cloudflare-email@example.com
+      - CF_API_EMAIL=${CLOUDFLARE_API_EMAIL} # Set this in your environment or .env file
       # - CF_API_KEY=YOUR_CLOUDFLARE_GLOBAL_API_KEY_HERE
     volumes:
       # Mount Docker socket to allow Traefik to discover other containers (if needed in future)
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Mount static configuration file
-      - /mnt/nas/DockerServices/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - /mnt/nas/DockerServices/_homelab/admin/network_proxy/traefik.yml:/etc/traefik/traefik.yml
       # Mount directory for dynamic configuration files
-      - /mnt/nas/DockerServices/traefik/conf.d:/etc/traefik/conf.d:ro
+      # - /mnt/nas/DockerServices/traefik/conf.d:/etc/traefik/conf.d
+      - /mnt/nas/DockerServices/_homelab/admin/network_proxy/internal-services.yml:/etc/traefik/conf.d/internal-services.yml
       # Mount Let's Encrypt certificate storage
       - /mnt/nas/DockerServices/traefik/acme.json:/acme.json
+      # Mount Traefik's own configuration directory
+      - /mnt/nas/DockerServices/traefik/logs:/logs
     networks:
       - proxy
     restart: unless-stopped

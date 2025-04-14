@@ -1,0 +1,92 @@
+http:
+  # Define reusable server transports first
+  serversTransports:
+    insecure-skip-verify: # <---- Give your transport configuration a name
+      insecureSkipVerify: true # <---- Define the setting here
+
+  routers:
+    proxmox-router:
+      rule: "Host(`proxmox.slavik.tech`)"
+      entryPoints:
+        - websecure # Use HTTPS entrypoint
+      service: proxmox-service
+      tls:
+        certResolver: le-cloudflare # Use your Let's Encrypt resolver
+
+    # Router for Portainer
+    portainer-router:
+      rule: "Host(`docker.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: portainer-service
+      tls:
+        certResolver: le-cloudflare
+
+    # Router for TrueNAS
+    truenas-router:
+      rule: "Host(`nas.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: truenas-service
+      tls:
+        certResolver: le-cloudflare
+
+
+  services:
+    # Service definition for Portainer
+    proxmox-service:
+      loadBalancer:
+        # Reference the defined transport by its name
+        serversTransport: insecure-skip-verify # <---- Use the name here
+        servers:
+          - url: "https://192.168.68.103:8006"
+    # Service definition for Portainer
+    portainer-service:
+      loadBalancer:
+        # Reference the defined transport by its name
+        serversTransport: insecure-skip-verify # <---- Use the name here
+        servers:
+          - url: "https://192.168.68.91:9443"
+
+    # Service definition for TrueNAS
+    truenas-service:
+      loadBalancer:
+        # Reference the defined transport by its name
+        serversTransport: insecure-skip-verify # <---- Use the name here
+        servers:
+          # Assuming TrueNAS also forces HTTPS and uses self-signed cert internally
+          - url: "https://192.168.68.95"
+
+    
+    # calibre-router:
+    #   rule: "Host(`calibre-core.slavik.tech`)"
+    #   entryPoints:
+    #     - websecure # Use HTTPS entrypoint
+    #   service: calibre-service
+    #   tls:
+    #     certResolver: le-cloudflare # Use your Let's Encrypt resolver
+
+    # # --- NEW: Router for Calibre-Web ---
+    # calibre-web-router:
+    #   rule: "Host(`calibre.slavik.tech`)"
+    #   entryPoints:
+    #     - websecure # Use HTTPS entrypoint
+    #   service: calibre-web-service
+    #   tls:
+    #     certResolver: le-cloudflare # Use your Let's Encrypt resolver
+
+    # # --- NEW: Service definition for Calibre GUI ---
+    # calibre-service:
+    #   loadBalancer:
+    #     servers:
+    #       # Point to the HOST IP and HOST PORT where Calibre GUI is exposed
+    #       - url: "http://192.168.68.105:5758"
+    #     # No serversTransport needed if targeting HTTP
+
+    # # --- NEW: Service definition for Calibre-Web ---
+    # calibre-web-service:
+    #   loadBalancer:
+    #     servers:
+    #       # Point to the HOST IP and HOST PORT where Calibre-Web is exposed
+    #       - url: "http://192.168.68.105:5757"
+    #     # No serversTransport needed if targeting HTTP

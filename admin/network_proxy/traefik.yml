@@ -1,0 +1,63 @@
+global:
+  checkNewVersion: true
+  sendAnonymousUsage: false # Optional: Disable telemetry
+
+# API / Dashboard (Access via http://<LXC_IP>:8081 - Secure this later!)
+# Comment out 'insecure: true' for production or secure it via middleware
+api:
+  dashboard: true
+  # insecure: true # Makes dashboard accessible without auth - BE CAREFUL
+
+# Entrypoints (Ports Traefik listens on)
+entryPoints:
+  web:
+    address: ":80"
+    # Optional: Redirect all HTTP to HTTPS
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
+    http:
+      tls:
+        certResolver: le-cloudflare # Use the Let's Encrypt resolver defined below
+        domains:
+          - main: "slavik.tech" # Optional: Main domain for default cert
+            sans: "*.slavik.tech" # SAN for wildcard cert
+
+# Certificate Resolvers (How to get SSL certs)
+certificatesResolvers:
+  le-cloudflare:
+    acme:
+      email: vitezslavik@gmail.com # CHANGE THIS to your real email
+      storage: /acme.json # Path inside the container
+      # Use the DNS-01 challenge with Cloudflare
+      dnsChallenge:
+        provider: cloudflare
+        # delayBeforeCheck: 0 # Default is 0, adjust if needed
+        resolvers: # Optional: Specify DNS servers to verify propagation
+          - "1.1.1.1:53"
+        #   - "8.8.8.8:53"
+
+# Providers (Where Traefik finds routing configuration)
+providers:
+  docker:
+    # Enable Docker provider (useful if you add more services in Docker later)
+    exposedByDefault: true # Don't expose containers unless explicitly labeled
+    network: proxy # Look for containers on the 'proxy' network
+  file:
+    # Enable File provider to read dynamic configuration from files
+    directory: /etc/traefik/conf.d # Path inside the container
+    watch: true # Watch for changes in the directory
+
+# Log level (DEBUG, INFO, WARNING, ERROR)
+log:
+  level: INFO # Set to DEBUG for troubleshooting
+  # filePath: /path/to/traefik.log # Optional: Log to a file
+
+# Access Log (Optional)
+# accessLog:
+  # filePath: /path/to/access.log

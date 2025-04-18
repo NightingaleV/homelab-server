@@ -51,15 +51,16 @@ providers:
     exposedByDefault: false # Don't expose containers unless explicitly labeled
     endpoint: "unix:///var/run/docker.sock"
     network: proxy # Look for containers on the 'proxy' network
-  consulCatalog:
-    # Address of your Consul server API. Traefik can use the service name
-    # because they are on the same 'proxy' docker network.
-    endpoint:
-      address: "consul-server:8500"
-    prefix: "traefik" # Standard prefix for KV store usage (optional here)
-    constraints: "tag==traefik.enable=true"
-    exposedByDefault: false
-    refreshInterval: 30s
+  # consulCatalog:
+  #   # Address of your Consul server API. Traefik can use the service name
+  #   # because they are on the same 'proxy' docker network.
+  #   endpoint:
+  #     address: "192.168.68.90:8500"
+  #   prefix: "traefik" # Standard prefix for KV store usage (optional here)
+  #   defaultRule: "Host(`{{ .Name }}.slavik.tech`)"
+  #   # constraints: "tag==traefik.enable=true"
+  #   exposedByDefault: true
+  #   refreshInterval: 30s
   file:
     # Enable File provider to read dynamic configuration from files
     directory: /etc/traefik/conf.d # Path inside the container

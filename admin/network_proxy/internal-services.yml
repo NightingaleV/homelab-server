@@ -31,6 +31,79 @@ http:
       tls:
         certResolver: le-cloudflare
 
+    # Router for TrueNAS
+    openwebui-router:
+      rule: "Host(`chat.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: openwebui-service
+      tls:
+        certResolver: le-cloudflare
+    anything-router:
+      rule: "Host(`anything.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: anything-service
+      tls:
+        certResolver: le-cloudflare
+    litellm-router:
+      rule: "Host(`litellm.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: litellm-service
+      tls:
+        certResolver: le-cloudflare
+
+    n8n-router:
+      rule: "Host(`n8n.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: n8n-service
+      tls:
+        certResolver: le-cloudflare
+    flowise-router:
+      rule: "Host(`flowise.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: flowise-service
+      tls:
+        certResolver: le-cloudflare
+    qdrant-router:
+      rule: "Host(`qdrant.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: qdrant-service
+      tls:
+        certResolver: le-cloudflare
+    chromadb-router:
+      rule: "Host(`chromadb.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: chromadb-service
+      tls:
+        certResolver: le-cloudflare
+    vector-admin-postgres-router:
+      rule: "Host(`vector-admin-postgres.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: vector-admin-postgres-service
+      tls:
+        certResolver: le-cloudflare
+    nocodb-router:
+      rule: "Host(`nocodb.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: nocodb-service
+      tls:
+        certResolver: le-cloudflare
+    searxng-router:
+      rule: "Host(`searxng.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: searxng-service
+      tls:
+        certResolver: le-cloudflare
+
 
   services:
     # Service definition for Portainer
@@ -57,82 +130,51 @@ http:
           # Assuming TrueNAS also forces HTTPS and uses self-signed cert internally
           - url: "https://192.168.68.95"
 
-    # # AI SERVICES
-    # # ---------------------------------------------------------------------------
-    # openwebui-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:7000"
-    
-    # litellm-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:7001"
-    
-    # anythingllm-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:7004"
-    
-    # n8n-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:7002"
-    
-    # flowise-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:7003"
-    
-    # vectoradmin-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:7005"
-    
-    # nocodb-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:7006"
-    
-    # chromadb-ui-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:5008"
-    
-    # searxng-service:
-    #   loadBalancer:
-    #     servers:
-    #       - url: "http://192.168.68.105:7777"
-    
-    # # calibre-router:
-    # #   rule: "Host(`calibre-core.slavik.tech`)"
-    # #   entryPoints:
-    # #     - websecure # Use HTTPS entrypoint
-    # #   service: calibre-service
-    # #   tls:
-    # #     certResolver: le-cloudflare # Use your Let's Encrypt resolver
+    # AI SERVICES
+    # ---------------------------------------------------------------------------
+    openwebui-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.99:7000"
+    anything-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.99:7004"
+    litellm-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.99:7001"
 
-    # # # --- NEW: Router for Calibre-Web ---
-    # # calibre-web-router:
-    # #   rule: "Host(`calibre.slavik.tech`)"
-    # #   entryPoints:
-    # #     - websecure # Use HTTPS entrypoint
-    # #   service: calibre-web-service
-    # #   tls:
-    # #     certResolver: le-cloudflare # Use your Let's Encrypt resolver
+    n8n-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.105:7002"
+    
+    flowise-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.105:7003"
+          
+    qdrant-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.105:6333"
+    chromadb-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.105:5001"
 
-    # # # --- NEW: Service definition for Calibre GUI ---
-    # # calibre-service:
-    # #   loadBalancer:
-    # #     servers:
-    # #       # Point to the HOST IP and HOST PORT where Calibre GUI is exposed
-    # #       - url: "http://192.168.68.105:5758"
-    # #     # No serversTransport needed if targeting HTTP
+    vector-admin-postgres-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.105:5433"
 
-    # # # --- NEW: Service definition for Calibre-Web ---
-    # # calibre-web-service:
-    # #   loadBalancer:
-    # #     servers:
-    # #       # Point to the HOST IP and HOST PORT where Calibre-Web is exposed
-    # #       - url: "http://192.168.68.105:5757"
-    # #     # No serversTransport needed if targeting HTTP
+    nocodb-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.105:7006"
+    
+    searxng-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.105:7777"

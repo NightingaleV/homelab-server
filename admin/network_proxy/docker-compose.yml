@@ -79,7 +79,8 @@ services:
       # Mount Traefik's own configuration directory
       - /mnt/nas/DockerServices/traefik/logs:/logs
     networks:
-      - proxy
+      - proxy # Needs to be reachable by Traefik and Registrator
+      - ai-network
     restart: unless-stopped
     labels:
       # --- Labels for Traefik Dashboard via Consul/Registrator ---
@@ -89,22 +90,26 @@ services:
       - "traefik.http.routers.traefik-dash-rtr.entrypoints=websecure"           # Use HTTPS entrypoint
       - "traefik.http.routers.traefik-dash-rtr.tls.certresolver=le-cloudflare"  # Use Let's Encrypt
       - "traefik.http.routers.traefik-dash-rtr.service=api@internal"
-  # +++ Consul Server +++
-  consul-server:
-    image: hashicorp/consul:latest
-    container_name: consul-server
-    restart: unless-stopped
-    ports:
-      - "8500:8500"     # API/UI Port
-      - "8600:8600/tcp" # DNS Port (Optional for this setup)
-      - "8600:8600/udp" # DNS Port (Optional for this setup)
-    volumes:
-      # Persist Consul data (Create this directory on the LXC host)
-      - /mnt/nas/DockerServices/consul:/consul/data
-    # Run in server mode, bootstrap (for single node), enable UI, listen on all interfaces
-    command: "agent -server -bootstrap-expect=1 -ui -client=0.0.0.0"
-    networks:
-      - proxy # Needs to be reachable by Traefik and Registrator
+  # # +++ Consul Server +++
+  # consul-server:
+  #   image: hashicorp/consul:latest
+  #   container_name: consul-server
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8500:8500"     # API/UI Port
+  #     - "8300:8300/tcp" # <-- ADD THIS: Server RPC Port (TCP)
+  #     # You might eventually need Serf ports 8301/8302 if clustering
+  #     - "8600:8600/tcp" # DNS Port (Optional)
+  #     - "8600:8600/udp" # DNS Port (Optional)
+  #   volumes:
+  #     # Persist Consul data (Create this directory on the LXC host)
+  #     - /mnt/nas/DockerServices/consul:/consul/data
+  #   # Run in server mode, bootstrap (for single node), enable UI, listen on all interfaces
+  #   command: "agent -server -bootstrap-expect=1 -ui -client=0.0.0.0"
+  #   # command: "agent -server -bootstrap-expect=1 -ui -bind=0.0.0.0 -advertise=192.168.68.90  -client=0.0.0.0"
+  #   networks:
+  #     - proxy # Needs to be reachable by Traefik and Registrator
+  #     # - ai-network # Needs to be reachable by Traefik and Registrator
 
   # # +++ Registrator +++
   # registrator:
@@ -124,3 +129,5 @@ services:
 networks:
   proxy:
     external: true # Use the 'proxy' network created earlier
+  ai-network:    # <-- Add this definition
+    external: true

@@ -26,7 +26,23 @@ services:
     restart: unless-stopped
     # Optional: Use host networking if port conflicts are hard to manage or for DHCP
     # network_mode: host
-
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adguard.entrypoints=web"
+      - "traefik.http.routers.adguard.rule=Host(`dns.slavik.tech`)" # change with your own domain/sub domain
+      - "traefik.http.routers.adguard-secure.entrypoints=websecure"
+      - "traefik.http.routers.adguard-secure.rule=Host(`dns.slavik.tech`)" # change with your own domain/sub domain
+      - "traefik.http.routers.adguard-secure.tls=true"
+      - "traefik.http.routers.adguard-secure.tls.certresolver=le-cloudflare"
+      - "traefik.http.routers.adguard-secure.service=adguard-secure"
+      - "traefik.http.services.adguard-secure.loadbalancer.server.port=80" # 3000 Change to 80 after first reboot and settings admin account
+      - "traefik.docker.network=proxy"
+      - "traefik.tcp.routers.adguard-tls.rule=HostSNI(`dns.slavik.tech`)" # Use your DoT hostname
+      - "traefik.tcp.routers.adguard-tls.tls=true"
+      - "traefik.tcp.routers.adguard-tls.entrypoints=dot"
+      - "traefik.tcp.routers.adguard-tls.tls.certresolver=letsencrypt" # Or your resolver name
+      - "traefik.tcp.routers.adguard-tls.service=adguard-tls"
+      - "traefik.tcp.services.adguard-tls.loadbalancer.server.port=53" # <-- Should target port 53
   traefik:
     image: traefik:latest
     container_name: traefik
@@ -35,8 +51,9 @@ services:
       - "80:80"
       - "443:443"
       # - 127.0.0.1:8081:8080 # http api dashboard
+      - "853:853" # DNS-over-TLS
       # Expose Traefik Dashboard (optional, secure it later!)
-      # - "8081:8080" # Be careful, AdGuard uses 8080 in this example
+      - "8081:8080" # Be careful, AdGuard uses 8080 in this example
     expose:
       - 80 # http
       - 443 # https
@@ -64,6 +81,45 @@ services:
     networks:
       - proxy
     restart: unless-stopped
+    labels:
+      # --- Labels for Traefik Dashboard via Consul/Registrator ---
+      - "traefik.enable=true"
+      # 2. Define the HTTP Router for the Dashboard
+      - "traefik.http.routers.traefik-dash-rtr.rule=Host(`traefik.slavik.tech`)" # Hostname rule
+      - "traefik.http.routers.traefik-dash-rtr.entrypoints=websecure"           # Use HTTPS entrypoint
+      - "traefik.http.routers.traefik-dash-rtr.tls.certresolver=le-cloudflare"  # Use Let's Encrypt
+      - "traefik.http.routers.traefik-dash-rtr.service=api@internal"
+  # +++ Consul Server +++
+  consul-server:
+    image: hashicorp/consul:latest
+    container_name: consul-server
+    restart: unless-stopped
+    ports:
+      - "8500:8500"     # API/UI Port
+      - "8600:8600/tcp" # DNS Port (Optional for this setup)
+      - "8600:8600/udp" # DNS Port (Optional for this setup)
+    volumes:
+      # Persist Consul data (Create this directory on the LXC host)
+      - /mnt/nas/DockerServices/consul:/consul/data
+    # Run in server mode, bootstrap (for single node), enable UI, listen on all interfaces
+    command: "agent -server -bootstrap-expect=1 -ui -client=0.0.0.0"
+    networks:
+      - proxy # Needs to be reachable by Traefik and Registrator
+
+  # # +++ Registrator +++
+  # registrator:
+  #   image: hypolas/registrator:latest
+  #   container_name: registrator
+  #   restart: unless-stopped
+  #   # Use host network mode so it registers the host IP (192.168.68.90) for local services
+  #   network_mode: "host"
+  #   volumes:
+  #     # Needs access to the Docker socket on this host (192.168.68.90)
+  #     - "/var/run/docker.sock:/tmp/docker.sock"
+  #   command:
+  #     # Tell registrator where the Consul agent API is.
+  #     # Since Registrator is in host mode, it needs to use the host IP and mapped port.
+  #     "consul://192.168.68.90:8500" 
 
 networks:
   proxy:

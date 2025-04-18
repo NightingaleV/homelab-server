@@ -1,12 +1,12 @@
 global:
-  checkNewVersion: true
+  checkNewVersion: false
   sendAnonymousUsage: false # Optional: Disable telemetry
 
 # API / Dashboard (Access via http://<LXC_IP>:8081 - Secure this later!)
 # Comment out 'insecure: true' for production or secure it via middleware
 api:
   dashboard: true
-  # insecure: true # Makes dashboard accessible without auth - BE CAREFUL
+  insecure: true # Makes dashboard accessible without auth - BE CAREFUL
 
 # Entrypoints (Ports Traefik listens on)
 entryPoints:
@@ -27,6 +27,8 @@ entryPoints:
         domains:
           - main: "slavik.tech" # Optional: Main domain for default cert
             sans: "*.slavik.tech" # SAN for wildcard cert
+  dot: 
+    address: ":853"  
 
 # Certificate Resolvers (How to get SSL certs)
 certificatesResolvers:
@@ -46,8 +48,18 @@ certificatesResolvers:
 providers:
   docker:
     # Enable Docker provider (useful if you add more services in Docker later)
-    exposedByDefault: true # Don't expose containers unless explicitly labeled
+    exposedByDefault: false # Don't expose containers unless explicitly labeled
+    endpoint: "unix:///var/run/docker.sock"
     network: proxy # Look for containers on the 'proxy' network
+  consulCatalog:
+    # Address of your Consul server API. Traefik can use the service name
+    # because they are on the same 'proxy' docker network.
+    endpoint:
+      address: "consul-server:8500"
+    prefix: "traefik" # Standard prefix for KV store usage (optional here)
+    constraints: "tag==traefik.enable=true"
+    exposedByDefault: false
+    refreshInterval: 30s
   file:
     # Enable File provider to read dynamic configuration from files
     directory: /etc/traefik/conf.d # Path inside the container
@@ -55,7 +67,7 @@ providers:
 
 # Log level (DEBUG, INFO, WARNING, ERROR)
 log:
-  level: INFO # Set to DEBUG for troubleshooting
+  level: DEBUG # Set to DEBUG for troubleshooting
   # filePath: /path/to/traefik.log # Optional: Log to a file
 
 # Access Log (Optional)

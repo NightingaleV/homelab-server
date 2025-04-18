@@ -57,36 +57,82 @@ http:
           # Assuming TrueNAS also forces HTTPS and uses self-signed cert internally
           - url: "https://192.168.68.95"
 
+    # # AI SERVICES
+    # # ---------------------------------------------------------------------------
+    # openwebui-service:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://192.168.68.105:7000"
     
-    # calibre-router:
-    #   rule: "Host(`calibre-core.slavik.tech`)"
-    #   entryPoints:
-    #     - websecure # Use HTTPS entrypoint
-    #   service: calibre-service
-    #   tls:
-    #     certResolver: le-cloudflare # Use your Let's Encrypt resolver
-
-    # # --- NEW: Router for Calibre-Web ---
-    # calibre-web-router:
-    #   rule: "Host(`calibre.slavik.tech`)"
-    #   entryPoints:
-    #     - websecure # Use HTTPS entrypoint
-    #   service: calibre-web-service
-    #   tls:
-    #     certResolver: le-cloudflare # Use your Let's Encrypt resolver
-
-    # # --- NEW: Service definition for Calibre GUI ---
-    # calibre-service:
+    # litellm-service:
     #   loadBalancer:
     #     servers:
-    #       # Point to the HOST IP and HOST PORT where Calibre GUI is exposed
-    #       - url: "http://192.168.68.105:5758"
-    #     # No serversTransport needed if targeting HTTP
-
-    # # --- NEW: Service definition for Calibre-Web ---
-    # calibre-web-service:
+    #       - url: "http://192.168.68.105:7001"
+    
+    # anythingllm-service:
     #   loadBalancer:
     #     servers:
-    #       # Point to the HOST IP and HOST PORT where Calibre-Web is exposed
-    #       - url: "http://192.168.68.105:5757"
-    #     # No serversTransport needed if targeting HTTP
+    #       - url: "http://192.168.68.105:7004"
+    
+    # n8n-service:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://192.168.68.105:7002"
+    
+    # flowise-service:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://192.168.68.105:7003"
+    
+    # vectoradmin-service:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://192.168.68.105:7005"
+    
+    # nocodb-service:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://192.168.68.105:7006"
+    
+    # chromadb-ui-service:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://192.168.68.105:5008"
+    
+    # searxng-service:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://192.168.68.105:7777"
+    
+    # # calibre-router:
+    # #   rule: "Host(`calibre-core.slavik.tech`)"
+    # #   entryPoints:
+    # #     - websecure # Use HTTPS entrypoint
+    # #   service: calibre-service
+    # #   tls:
+    # #     certResolver: le-cloudflare # Use your Let's Encrypt resolver
+
+    # # # --- NEW: Router for Calibre-Web ---
+    # # calibre-web-router:
+    # #   rule: "Host(`calibre.slavik.tech`)"
+    # #   entryPoints:
+    # #     - websecure # Use HTTPS entrypoint
+    # #   service: calibre-web-service
+    # #   tls:
+    # #     certResolver: le-cloudflare # Use your Let's Encrypt resolver
+
+    # # # --- NEW: Service definition for Calibre GUI ---
+    # # calibre-service:
+    # #   loadBalancer:
+    # #     servers:
+    # #       # Point to the HOST IP and HOST PORT where Calibre GUI is exposed
+    # #       - url: "http://192.168.68.105:5758"
+    # #     # No serversTransport needed if targeting HTTP
+
+    # # # --- NEW: Service definition for Calibre-Web ---
+    # # calibre-web-service:
+    # #   loadBalancer:
+    # #     servers:
+    # #       # Point to the HOST IP and HOST PORT where Calibre-Web is exposed
+    # #       - url: "http://192.168.68.105:5757"
+    # #     # No serversTransport needed if targeting HTTP

@@ -83,7 +83,7 @@ http:
       tls:
         certResolver: le-cloudflare
     vector-admin-postgres-router:
-      rule: "Host(`vector-admin-postgres.slavik.tech`)"
+      rule: "Host(`postgres-ai.slavik.tech`)"
       entryPoints:
         - websecure
       service: vector-admin-postgres-service
@@ -97,7 +97,7 @@ http:
       tls:
         certResolver: le-cloudflare
     searxng-router:
-      rule: "Host(`searxng.slavik.tech`)"
+      rule: "Host(`search.slavik.tech`)"
       entryPoints:
         - websecure
       service: searxng-service
@@ -148,33 +148,33 @@ http:
     n8n-service:
       loadBalancer:
         servers:
-          - url: "http://192.168.68.105:7002"
+          - url: "http://192.168.68.99:7002"
     
     flowise-service:
       loadBalancer:
         servers:
-          - url: "http://192.168.68.105:7003"
+          - url: "http://192.168.68.99:7003"
           
     qdrant-service:
       loadBalancer:
         servers:
-          - url: "http://192.168.68.105:6333"
+          - url: "http://192.168.68.99:6333"
     chromadb-service:
       loadBalancer:
         servers:
-          - url: "http://192.168.68.105:5001"
+          - url: "http://192.168.68.99:5001"
 
     vector-admin-postgres-service:
       loadBalancer:
         servers:
-          - url: "http://192.168.68.105:5433"
+          - url: "http://192.168.68.99:5433"
 
     nocodb-service:
       loadBalancer:
         servers:
-          - url: "http://192.168.68.105:7006"
+          - url: "http://192.168.68.99:7006"
     
     searxng-service:
       loadBalancer:
         servers:
-          - url: "http://192.168.68.105:7777"
+          - url: "http://192.168.68.99:7777"

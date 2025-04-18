@@ -31,8 +31,8 @@ services:
       # - "ENABLE_SIGNUP=false"
       - "OLLAMA_BASE_URL=http://ollama:11434"
       - DATABASE_URL=${OPENWEBUI_DB_STRING}
-      - QDRANT_API_KEY=${QDRANT_API_TOKEN}
-      - QDRANT_URI=http://qdrant:6333
+      # - QDRANT_API_KEY=${QDRANT_API_TOKEN}
+      # - QDRANT_URI=http://qdrant:6333
       # - VECTOR_DB=chroma
       # - CHROMA_HTTP_HOST=http://chromadb
       # # - CHROMA_DATABASE=openwebuid-db
@@ -77,10 +77,10 @@ services:
     command: [ "--port", "4000", "--num_workers", "3" ]
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    networks:
-      - ai-network
     depends_on:
       - vector-admin-postgres
+    networks:
+      - ai-network
     healthcheck:  # Defines the health check configuration for the container
       test: [ "CMD", "curl", "-f", "http://localhost:4000/health/liveliness || exit 1" ]  # Command to execute for health check
       interval: 30s  # Perform health check every 30 seconds
@@ -350,7 +350,26 @@ services:
       - ai-network
     # volumes:
       # - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/_homelab/services/ai-server/tika-config.xml:/tika-config.xml
-    
+  # registrator:
+  #   image: hypolas/registrator:latest
+  #   container_name: registrator
+  #   restart: unless-stopped
+  #   # Use host network mode so it registers the host IP (192.168.68.90) for local services
+  #   network_mode: "host"
+  #   # networks:
+  #     # - ai-network
+  #   volumes:
+  #     # Needs access to the Docker socket on this host (192.168.68.90)
+  #     - "/var/run/docker.sock:/tmp/docker.sock"
+  #   command:
+  #     # Tell registrator where the Consul agent API is.
+  #     - "-ip=192.168.68.99" 
+  #     # - "-resync=10"
+  #     - "-deregister=always"
+  #     # Since Registrator is in host mode, it needs to use the host IP and mapped port.
+  #     # - "-tags=from-host-99,test-tag"
+  #     - "consul://192.168.68.90:8500" 
+      
 networks:
   ai-network:
     external: true

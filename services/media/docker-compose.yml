@@ -1,0 +1,196 @@
+version: "3.8"
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    environment:
+      - PUID=3005 # Replace with your PUID
+      - PGID=3000 # Replace with your PGID
+      - TZ=Etc/UTC # Replace with your Timezone (e.g., America/New_York)
+    network:
+      - media-network
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/prowlarr:/config # Host path : Container path
+    ports:
+      - "9696:9696" # Host port : Container port
+    restart: always
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    environment:
+      - PUID=3005 # Replace with your PUID
+      - PGID=3000 # Replace with your PGID
+      - TZ=Etc/UTC # Replace with your Timezone
+    network:
+      - media-network
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/radarr:/config
+      # - ${DATA_STORAGE}:/data # Map the parent data directory
+      - ${DATA_STORAGE}/movies:/movies # Alternative: Map specifically
+      - ${DATA_STORAGE}/downloads:/downloads # Alternative: Map specifically
+    ports:
+      - "7878:7878"
+    restart: always
+    depends_on:
+      - prowlarr # Optional: wait for prowlarr (doesn't guarantee readiness)
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest # Use v4 if desired: :v4-develop
+    container_name: sonarr
+    environment:
+      - PUID=3005 # Replace with your PUID
+      - PGID=3000 # Replace with your PGID
+      - TZ=Etc/UTC # Replace with your Timezone
+    network:
+      - media-network
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/sonarr:/config
+      # - ${DATA_STORAGE}:/data # Map the parent data directory
+      - ${DATA_STORAGE}/tv:/tv # Alternative: Map specifically
+      - ${DATA_STORAGE}/downloads:/downloads # Alternative: Map specifically
+    ports:
+      - "8989:8989"
+    restart: always
+    depends_on:
+      - prowlarr # Optional
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    network:
+      - media-network
+    environment:
+      - PUID=3005 # Replace with your PUID
+      - PGID=3000 # Replace with your PGID
+      - TZ=Etc/UTC # Replace with your Timezone
+    network:
+      - media-network
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/bazarr:/config
+      # - ${DATA_STORAGE}/media:/media # Needs access to media folders
+      - ${DATA_STORAGE}/movies:/movies # Alternative: Map specifically
+      - ${DATA_STORAGE}/tv:/tv # Alternative: Map specifically
+    ports:
+      - "6767:6767"
+    restart: always
+    depends_on:
+      - sonarr
+      - radarr
+
+  qbittorrent: # Or transmission, deluge, etc.
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network:
+      - media-network
+    environment:
+      - PUID=3005 # Replace with your PUID
+      - PGID=3000 # Replace with your PGID
+      - TZ=Etc/UTC # Replace with your Timezone
+      - WEBUI_PORT=8080
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/qbittorrent:/config
+      - ${DATA_STORAGE}/downloads:/downloads # Crucial: Consistent download path
+    ports:
+      - "8082:8080" # WebUI Port
+      - "6881:6881" # Incoming Torrent Connection Port (TCP)
+      - "6881:6881/udp" # Incoming Torrent Connection Port (UDP)
+    restart: always
+
+  emby:
+    image: lscr.io/linuxserver/emby:latest # Or emby/embyserver:latest
+    container_name: emby
+    network:
+      - media-network
+    environment:
+      - PUID=3005 # Replace with your PUID
+      - PGID=3000 # Replace with your PGID
+      - TZ=Etc/UTC # Replace with your Timezone
+      # - GIDLIST=abc # Optional: Set group IDs for hardware transcoding if needed
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/emby:/config
+      - ${DATA_STORAGE}/media:/media # Give Emby access to your media library
+      # - ${DATA_STORAGE}/media/movies:/movies # Alternative: Map specifically
+      # - ${DATA_STORAGE}/media/tv:/tv # Alternative: Map specifically
+      # - /opt/vc/lib:/opt/vc/lib # Example for RPi hardware acceleration (if host libs are mounted)
+    ports:
+      - "8096:8096" # HTTP Port
+      - "8920:8920" # Optional: HTTPS Port
+      # Add other ports if needed (e.g., DLNA: 1900/udp, 7359/udp)
+    # devices: # Uncomment and configure if passing through hardware (e.g., GPU for transcoding)
+    #   - /dev/dri:/dev/dri # Example for Intel Quick Sync Video / AMD VAAPI
+    restart: always
+  overseerr:
+    image: sctx/overseerr:latest
+    container_name: overseerr
+    network:
+      - media-network
+    environment:
+      - LOG_LEVEL=debug
+      - TZ=Canada/Montreal
+    ports:
+      - 5055:5055
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/overseerr/config:/app/config
+    restart: always
+  firefox:
+    image: lscr.io/linuxserver/firefox:latest
+    container_name: firefox
+    hostname: firefox
+    restart: always
+    network:
+      - media-network
+    security_opt:
+      - seccomp:unconfined # optional
+    environment:
+      - PUID=3005 # optional
+      - PGID=3000 # optional
+      - TZ=Europe/Berlin
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/firefox/config:/config
+    ports:
+      - 3210:3000
+    expose:
+      - 3000
+  openvpn-as:
+    image: openvpn/openvpn-as
+    container_name: openvpn-as
+    hostname: openvpn-as
+    restart: always
+    network:
+      - media-network
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 443:443/tcp # openvpn over tcp
+      - 1194:1194/udp # openvpn over udp
+      - 943:943/tcp # openvpn admin ui
+    expose:
+      - 443 # openvpn over tcp
+      - 1194 # openvpn over udp
+      - 943 # openvpn as admin ui
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/openvpn:/openvpn
+  filebrowser:
+    image: hurlenko/filebrowser
+    container_name: filebrowser
+    restart: always    
+    user: 3005:3000 # adjust to your needs
+    network:
+      - media-network
+    environment:
+      - FB_BASEURL=/filebrowser    
+    ports:
+      - 8081:8080
+    expose:
+      - 8081
+    volumes:
+      - ${DATA_STORAGE}/movies:/data/movies
+      - ${DATA_STORAGE}/tv:/data/tv
+      - ${DATA_STORAGE}/downloads:/data/downloads
+      - ${DATA_STORAGE}/downloads:/data/media
+      - ${DOCKER_VOLUME_STORAGE}/filebrowser/config:/config
+
+networks:
+  media-network:
+    external: true

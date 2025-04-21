@@ -1,4 +1,3 @@
-version: "3.8"
 services:
   prowlarr:
     image: lscr.io/linuxserver/prowlarr:latest
@@ -7,7 +6,7 @@ services:
       - PUID=3005 # Replace with your PUID
       - PGID=3000 # Replace with your PGID
       - TZ=Etc/UTC # Replace with your Timezone (e.g., America/New_York)
-    network:
+    networks:
       - media-network
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/prowlarr:/config # Host path : Container path
@@ -22,7 +21,7 @@ services:
       - PUID=3005 # Replace with your PUID
       - PGID=3000 # Replace with your PGID
       - TZ=Etc/UTC # Replace with your Timezone
-    network:
+    networks:
       - media-network
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/radarr:/config
@@ -42,7 +41,7 @@ services:
       - PUID=3005 # Replace with your PUID
       - PGID=3000 # Replace with your PGID
       - TZ=Etc/UTC # Replace with your Timezone
-    network:
+    networks:
       - media-network
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/sonarr:/config
@@ -58,13 +57,11 @@ services:
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
     container_name: bazarr
-    network:
-      - media-network
     environment:
       - PUID=3005 # Replace with your PUID
       - PGID=3000 # Replace with your PGID
       - TZ=Etc/UTC # Replace with your Timezone
-    network:
+    networks:
       - media-network
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/bazarr:/config
@@ -81,18 +78,18 @@ services:
   qbittorrent: # Or transmission, deluge, etc.
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
-    network:
+    networks:
       - media-network
     environment:
       - PUID=3005 # Replace with your PUID
       - PGID=3000 # Replace with your PGID
       - TZ=Etc/UTC # Replace with your Timezone
-      - WEBUI_PORT=8080
+      - WEBUI_PORT=8082
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/qbittorrent:/config
       - ${DATA_STORAGE}/downloads:/downloads # Crucial: Consistent download path
     ports:
-      - "8082:8080" # WebUI Port
+      - "8082:8082" # WebUI Port
       - "6881:6881" # Incoming Torrent Connection Port (TCP)
       - "6881:6881/udp" # Incoming Torrent Connection Port (UDP)
     restart: always
@@ -100,7 +97,7 @@ services:
   emby:
     image: lscr.io/linuxserver/emby:latest # Or emby/embyserver:latest
     container_name: emby
-    network:
+    networks:
       - media-network
     environment:
       - PUID=3005 # Replace with your PUID
@@ -109,9 +106,9 @@ services:
       # - GIDLIST=abc # Optional: Set group IDs for hardware transcoding if needed
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/emby:/config
-      - ${DATA_STORAGE}/media:/media # Give Emby access to your media library
-      # - ${DATA_STORAGE}/media/movies:/movies # Alternative: Map specifically
-      # - ${DATA_STORAGE}/media/tv:/tv # Alternative: Map specifically
+      # - ${DATA_STORAGE}/media:/media # Give Emby access to your media library
+      - ${DATA_STORAGE}/movies:/movies # Alternative: Map specifically
+      - ${DATA_STORAGE}/tv:/tv # Alternative: Map specifically
       # - /opt/vc/lib:/opt/vc/lib # Example for RPi hardware acceleration (if host libs are mounted)
     ports:
       - "8096:8096" # HTTP Port
@@ -123,7 +120,7 @@ services:
   overseerr:
     image: sctx/overseerr:latest
     container_name: overseerr
-    network:
+    networks:
       - media-network
     environment:
       - LOG_LEVEL=debug
@@ -138,7 +135,7 @@ services:
     container_name: firefox
     hostname: firefox
     restart: always
-    network:
+    networks:
       - media-network
     security_opt:
       - seccomp:unconfined # optional
@@ -148,35 +145,36 @@ services:
       - TZ=Europe/Berlin
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/firefox/config:/config
+      - /mnt/nas/MediaLarge/downloads:/config/Downloads
     ports:
       - 3210:3000
     expose:
       - 3000
-  openvpn-as:
-    image: openvpn/openvpn-as
-    container_name: openvpn-as
-    hostname: openvpn-as
-    restart: always
-    network:
-      - media-network
-    cap_add:
-      - NET_ADMIN
-    ports:
-      - 443:443/tcp # openvpn over tcp
-      - 1194:1194/udp # openvpn over udp
-      - 943:943/tcp # openvpn admin ui
-    expose:
-      - 443 # openvpn over tcp
-      - 1194 # openvpn over udp
-      - 943 # openvpn as admin ui
-    volumes:
-      - ${DOCKER_VOLUME_STORAGE}/openvpn:/openvpn
+  # openvpn-as:
+  #   image: openvpn/openvpn-as
+  #   container_name: openvpn-as
+  #   hostname: openvpn-as
+  #   restart: always
+  #   network:
+  #     - media-network
+  #   cap_add:
+  #     - NET_ADMIN
+  #   ports:
+  #     - 443:443/tcp # openvpn over tcp
+  #     - 1194:1194/udp # openvpn over udp
+  #     - 943:943/tcp # openvpn admin ui
+  #   expose:
+  #     - 443 # openvpn over tcp
+  #     - 1194 # openvpn over udp
+  #     - 943 # openvpn as admin ui
+  #   volumes:
+  #     - ${DOCKER_VOLUME_STORAGE}/openvpn:/openvpn
   filebrowser:
     image: hurlenko/filebrowser
     container_name: filebrowser
     restart: always    
     user: 3005:3000 # adjust to your needs
-    network:
+    networks:
       - media-network
     environment:
       - FB_BASEURL=/filebrowser    
@@ -188,7 +186,6 @@ services:
       - ${DATA_STORAGE}/movies:/data/movies
       - ${DATA_STORAGE}/tv:/data/tv
       - ${DATA_STORAGE}/downloads:/data/downloads
-      - ${DATA_STORAGE}/downloads:/data/media
       - ${DOCKER_VOLUME_STORAGE}/filebrowser/config:/config
 
 networks:

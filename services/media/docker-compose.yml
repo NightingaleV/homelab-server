@@ -13,6 +13,21 @@ services:
     ports:
       - "9696:9696" # Host port : Container port
     restart: always
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest
+    container_name: flaresolverr
+    restart: unless-stopped
+    ports:
+      - 8191:8191/tcp
+    expose:
+      - 8191
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_HTML=${LOG_HTML:-false}
+      - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
+      - TZ=${TZ}
+    depends_on:
+      - prowlarr
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
@@ -74,26 +89,6 @@ services:
     depends_on:
       - sonarr
       - radarr
-
-  qbittorrent: # Or transmission, deluge, etc.
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    networks:
-      - media-network
-    environment:
-      - PUID=3005 # Replace with your PUID
-      - PGID=3000 # Replace with your PGID
-      - TZ=Etc/UTC # Replace with your Timezone
-      - WEBUI_PORT=8082
-    volumes:
-      - ${DOCKER_VOLUME_STORAGE}/qbittorrent:/config
-      - ${DATA_STORAGE}/downloads:/downloads # Crucial: Consistent download path
-    ports:
-      - "8082:8082" # WebUI Port
-      - "6881:6881" # Incoming Torrent Connection Port (TCP)
-      - "6881:6881/udp" # Incoming Torrent Connection Port (UDP)
-    restart: always
-
   emby:
     image: lscr.io/linuxserver/emby:latest # Or emby/embyserver:latest
     container_name: emby
@@ -130,50 +125,115 @@ services:
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/overseerr/config:/app/config
     restart: always
+  vpn: # Renamed from gluetun for easier reference in network_mode
+    image: qmcgaw/gluetun:latest
+    container_name: vpn
+    hostname: vpn # Optional: Set hostname if needed
+    cap_add:
+      - NET_ADMIN
+    # devices: # Needed for Wireguard kernel mode, uncomment if necessary
+    #   - /dev/net/tun:/dev/net/tun
+    networks:
+      - media-network # Add to media-network so other containers can reach it
+    ports:
+      # --- Ports for containers using the VPN ---
+      # Format: HOST_PORT:CONTAINER_PORT_INSIDE_VPN_CONTAINER
+      # qBittorrent WebUI: Make HOST_PORT match original qbittorrent port
+      - "8082:8082"
+      # qBittorrent Torrenting Ports (TCP & UDP)
+      - "6881:6881"
+      - "6881:6881/udp"
+      # Firefox Web Interface: Make HOST_PORT match original firefox port
+      - "3210:3000"
+      # --- Add other ports for VPN'd containers here if needed ---
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/gluetun:/gluetun # Persistent storage for Gluetun data
+    environment:
+      # --- VPN Settings (Pulled from .env file) ---
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      # WireGuard specific (only used if VPN_TYPE=wireguard)
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      # OpenVPN specific (only used if VPN_TYPE=openvpn)
+      # - OPENVPN_USER=${OPENVPN_USER}
+      # - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+      # Server selection (choose some criteria from .env)
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES:-} # Use :- to allow empty env var
+      # - SERVER_REGIONS=${SERVER_REGIONS:-}
+      # - SERVER_CITIES=${SERVER_CITIES:-}
+      # - SERVER_HOSTNAMES=${SERVER_HOSTNAMES:-}
+      # - SERVER_NUMBER=${SERVER_NUMBER:-} # If using OpenVPN + number
+      # - SERVER_PROTOCOLS=${SERVER_PROTOCOLS:-} # If using OpenVPN + protocol
+      # - WIREGUARD_ENDPOINT_IP=${WIREGUARD_ENDPOINT_IP:-} # If using WireGuard + specific server
+      # - WIREGUARD_ENDPOINT_PORT=${WIREGUARD_ENDPOINT_PORT:-} # If using WireGuard + specific server
+      # - VPN_ENDPOINT_IP=${VPN_ENDPOINT_IP:-} # If using OpenVPN + specific server
+      # - VPN_ENDPOINT_PORT=${VPN_ENDPOINT_PORT:-} # If using OpenVPN + specific server
+
+      # --- Firewall / Kill Switch Settings ---
+      - FIREWALL_VPN_INPUT_PORTS=${FIREWALL_VPN_INPUT_PORTS:-6881} # Allow qBittorrent peer connections ONLY via VPN
+      - FIREWALL_INPUT_PORTS=${FIREWALL_INPUT_PORTS:-8082,3000} # Allow WebUI access from local network
+      # --- Other Settings ---
+      - TZ=${TZ}
+      - PUID=3005 # Optional: Run gluetun as non-root (check Gluetun docs if issues arise)
+      - PGID=3000 # Optional
+      # - DOT_HEALTHCHECK_TARGET_ADDRESS=1.1.1.1:53 # Optional: Custom healthcheck target
+    healthcheck: # Optional: Monitor VPN connection status
+      test: ["CMD", "curl", "-f", "http://localhost:8888/v1/openvpn/status"] # Adjust path if using Wireguard? Check Gluetun docs. Might need custom healthcheck script.
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 1m # Give VPN time to connect initially
+    restart: always
+  qbittorrent: # Or transmission, deluge, etc.
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    network_mode: service:vpn
+    # networks:
+      # - media-network
+    environment:
+      - PUID=3005 # Replace with your PUID
+      - PGID=3000 # Replace with your PGID
+      - TZ=Etc/UTC # Replace with your Timezone
+      - WEBUI_PORT=8082
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/qbittorrent:/config
+      - ${DATA_STORAGE}/downloads:/downloads # Crucial: Consistent download path
+    # ports:
+      # - "8082:8082" # WebUI Port
+      # - "6881:6881" # Incoming Torrent Connection Port (TCP)
+      # - "6881:6881/udp" # Incoming Torrent Connection Port (UDP)
+    restart: always
+    depends_on:
+      - vpn
   firefox:
     image: lscr.io/linuxserver/firefox:latest
     container_name: firefox
-    hostname: firefox
+    # hostname: firefox
     restart: always
-    networks:
-      - media-network
+    # networks:
+      # - media-network
+    network_mode: service:vpn # Use the vpn container's network stack
     security_opt:
       - seccomp:unconfined # optional
     environment:
       - PUID=3005 # optional
       - PGID=3000 # optional
-      - TZ=Europe/Berlin
+      - TZ=${TZ}
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/firefox/config:/config
       - /mnt/nas/MediaLarge/downloads:/config/Downloads
-    ports:
-      - 3210:3000
-    expose:
-      - 3000
-  # openvpn-as:
-  #   image: openvpn/openvpn-as
-  #   container_name: openvpn-as
-  #   hostname: openvpn-as
-  #   restart: always
-  #   network:
-  #     - media-network
-  #   cap_add:
-  #     - NET_ADMIN
-  #   ports:
-  #     - 443:443/tcp # openvpn over tcp
-  #     - 1194:1194/udp # openvpn over udp
-  #     - 943:943/tcp # openvpn admin ui
-  #   expose:
-  #     - 443 # openvpn over tcp
-  #     - 1194 # openvpn over udp
-  #     - 943 # openvpn as admin ui
-  #   volumes:
-  #     - ${DOCKER_VOLUME_STORAGE}/openvpn:/openvpn
+    # ports:
+      # - 3210:3000
+    # expose:
+      # - 3000
+    depends_on:
+      - vpn
   filebrowser:
     image: hurlenko/filebrowser
     container_name: filebrowser
     restart: always    
-    user: 3005:3000 # adjust to your needs
+    # user: 3005:3000 # adjust to your needs
     networks:
       - media-network
     environment:

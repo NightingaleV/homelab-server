@@ -5,8 +5,8 @@ services:
     security_opt:
       - seccomp:unconfined # Required for GUI apps
     environment:
-      - PUID=3005
-      # - PGID=1337
+      - PUID=3005 # optional
+      - PGID=3000 # optional
       - TZ=Europe/Prague
       # - PASSWORD=yourpassword  # Optional - set a password for Calibre GUI
     volumes:
@@ -22,8 +22,8 @@ services:
     depends_on:
       - calibre
     environment:
-      - PUID=3005
-      # - PGID=1337
+      - PUID=3005 # optional
+      - PGID=3000 # optional
       - TZ=Europe/Prague
       - DOCKER_MODS=linuxserver/mods:universal-calibre  # Enables full Calibre features
     volumes:

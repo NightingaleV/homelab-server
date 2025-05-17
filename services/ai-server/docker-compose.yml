@@ -57,6 +57,23 @@ services:
       - chromadb
       - redis
       - vector-admin-postgres
+  mcpo-tools:
+    image: ghcr.io/open-webui/mcpo:main
+    container_name: mcpo-tools
+    restart: unless-stopped
+    ports:
+      - "8081:8001" # Exposing mcpo on host port 7010, container runs on 8001
+    volumes:
+      - ./mcp-servers/mcp_config.json:/mcp/mcp_config.json:ro # Mount the config file read-only
+    command: > # Using > for multi-line command readability
+      --host 0.0.0.0
+      --port 8001
+      --config /mcp/mcp_config.json
+      --api-key ${OPENWEBUI_MCPO_API_TOKEN}
+    depends_on:
+      - ui
+    networks:
+      - ai-network
   litellm: # Template: https://docs.litellm.ai/docs/proxy/deploy#docker-compose
     build:
       context: .
@@ -350,26 +367,6 @@ services:
       - ai-network
     # volumes:
       # - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/_homelab/services/ai-server/tika-config.xml:/tika-config.xml
-  # registrator:
-  #   image: hypolas/registrator:latest
-  #   container_name: registrator
-  #   restart: unless-stopped
-  #   # Use host network mode so it registers the host IP (192.168.68.90) for local services
-  #   network_mode: "host"
-  #   # networks:
-  #     # - ai-network
-  #   volumes:
-  #     # Needs access to the Docker socket on this host (192.168.68.90)
-  #     - "/var/run/docker.sock:/tmp/docker.sock"
-  #   command:
-  #     # Tell registrator where the Consul agent API is.
-  #     - "-ip=192.168.68.99" 
-  #     # - "-resync=10"
-  #     - "-deregister=always"
-  #     # Since Registrator is in host mode, it needs to use the host IP and mapped port.
-  #     # - "-tags=from-host-99,test-tag"
-  #     - "consul://192.168.68.90:8500" 
-      
 networks:
   ai-network:
     external: true

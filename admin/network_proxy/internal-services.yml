@@ -103,6 +103,55 @@ http:
       service: searxng-service
       tls:
         certResolver: le-cloudflare
+    emby-router:
+      rule: "Host(`netflix.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: emby-service
+      tls:
+        certResolver: le-cloudflare
+    browser-router:
+      rule: "Host(`browser.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: browser-service
+      tls:
+        certResolver: le-cloudflare
+    mediafiles-router:
+      rule: "Host(`mediafiles.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: mediafiles-service
+      tls:
+        certResolver: le-cloudflare
+    movies-router:
+      rule: "Host(`movies.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: movies-service
+      tls:
+        certResolver: le-cloudflare
+    tvshows-router:
+      rule: "Host(`tvshows.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: tvshows-service
+      tls:
+        certResolver: le-cloudflare
+    torrent-router:
+      rule: "Host(`torrent.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: torrent-service
+      tls:
+        certResolver: le-cloudflare
+    prowlarr-router:
+      rule: "Host(`prowlarr.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: prowlarr-service
+      tls:
+        certResolver: le-cloudflare
 
 
   services:
@@ -173,8 +222,35 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.99:7006"
-    
     searxng-service:
       loadBalancer:
         servers:
           - url: "http://192.168.68.99:7777"
+    emby-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:8096"
+    browser-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:3210"
+    mediafiles-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:8081"
+    movies-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:7878"
+    tvshows-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:8989"
+    torrent-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:8082"
+    prowlarr-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:9696"

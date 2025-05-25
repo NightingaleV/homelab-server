@@ -1,3 +1,6 @@
+# This Services is currently running on Truenas SCALE in order to have direct access to the NAS storage.
+# Problems Observed:
+# - Mounting leads to Calibre locking database.
 services:
   calibre:
     image: lscr.io/linuxserver/calibre:latest
@@ -12,9 +15,11 @@ services:
     volumes:
       - /mnt/nas/Media/Books:/config
     ports:
-      - "5758:8080"  # Calibre GUI
-      - "8181:8181"  # Optional: HTTPS for GUI
+      - "8182:8080"  # Calibre GUI
+      - "8183:8181"  # Optional: HTTPS for GUI
     restart: unless-stopped
+    networks:
+      - media-network
 
   calibre-web:
     image: lscr.io/linuxserver/calibre-web:latest
@@ -25,11 +30,17 @@ services:
       - PUID=3005 # optional
       - PGID=3000 # optional
       - TZ=Europe/Prague
-      - DOCKER_MODS=linuxserver/mods:universal-calibre  # Enables full Calibre features
+      # - DOCKER_MODS=linuxserver/mods:universal-calibre  # Enables full Calibre features
     volumes:
-      - /mnt/nas/DockerServices/calibre/calibre-web-config:/config
-      - /mnt/nas/Media/Books:/books
+      - /mnt/nas/DockerServices/calibre:/config
+      - /mnt/nas/Media/Books:/books:z
     ports:
-      - "5757:8083"  # Web UI for browsing books
+      - "8184:8083"  # Web UI for browsing books
     restart: unless-stopped
+    networks:
+      - media-network
     
+
+networks:
+  media-network:
+    external: true

@@ -112,19 +112,27 @@ services:
     # devices: # Uncomment and configure if passing through hardware (e.g., GPU for transcoding)
     #   - /dev/dri:/dev/dri # Example for Intel Quick Sync Video / AMD VAAPI
     restart: always
-  overseerr:
-    image: sctx/overseerr:latest
-    container_name: overseerr
+  # Jellyseerr - Media discovery and request manager (supports Emby)
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
     networks:
       - media-network
     environment:
       - LOG_LEVEL=debug
-      - TZ=Canada/Montreal
+      - TZ=Europe/Prague # Replace with your Timezone
+      - PUID=3005 # Match your user ID
+      - PGID=3000 # Match your group ID
     ports:
       - 5055:5055
     volumes:
-      - ${DOCKER_VOLUME_STORAGE}/overseerr/config:/app/config
+      - ${DOCKER_VOLUME_STORAGE}/jellyseerr/config:/app/config
+      - ${DOCKER_VOLUME_STORAGE}/jellyseerr/cache:/app/cache
     restart: always
+    depends_on:
+      - emby
+      - radarr
+      - sonarr
   vpn: # Renamed from gluetun for easier reference in network_mode
     image: qmcgaw/gluetun:latest
     container_name: vpn

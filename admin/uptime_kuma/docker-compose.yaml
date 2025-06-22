@@ -1,0 +1,26 @@
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma
+    container_name: uptime-kuma
+    hostname: uptime-kuma
+    restart: always
+    ports:
+      - 3001:3001
+    expose:
+      - 3001
+    dns:
+      - 192.168.68.90
+      - 1.1.1.1
+      - 8.8.8.8
+    volumes:
+      - /mnt/nas/DockerServices}/uptimekuma:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - admin
+networks:
+  admin:
+    external: true
+  # proxy:
+    # external: true
+# //   ai-network:
+# //     external: true

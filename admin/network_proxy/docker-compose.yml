@@ -90,6 +90,52 @@ services:
       - "traefik.http.routers.traefik-dash-rtr.entrypoints=websecure"           # Use HTTPS entrypoint
       - "traefik.http.routers.traefik-dash-rtr.tls.certresolver=le-cloudflare"  # Use Let's Encrypt
       - "traefik.http.routers.traefik-dash-rtr.service=api@internal"
+  portnote: # PORT MONITORING SERVICE - https://github.com/crocofied/PortNote
+    image: haedlessdev/portnote:latest
+    ports:
+      - "3043:3000"
+    environment:
+      JWT_SECRET: ${PORTNOTE_JWT_SECRET} # Replace with a secure random string
+      USER_SECRET: ${PORTNOTE_USER_SECRET} # Replace with a secure random string
+      LOGIN_USERNAME: ${PORTNOTE_USER} # Replace with a username
+      LOGIN_PASSWORD: ${PORTNOTE_PASSWORD} # Replace with a secure password
+      DATABASE_URL: ${PORTNOTE_DB_STRING}
+    depends_on:
+      portnote-db:
+        condition: service_started
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portnote.entrypoints=websecure"
+      - "traefik.http.routers.portnote.rule=Host(`port.slavik.tech`)"
+      - "traefik.http.routers.portnote.tls=true"
+      - "traefik.http.routers.portnote.tls.certresolver=le-cloudflare"
+      - "traefik.http.routers.portnote.service=portnote"
+      - "traefik.http.services.portnote.loadbalancer.server.port=3000"
+      - "traefik.docker.network=proxy"
+    networks:
+      - proxy # Needs to be reachable by Traefik and Registrator
+    
+  portnote-agent:
+    image: haedlessdev/portnote-agent:latest
+    environment:
+      - DATABASE_URL=${PORTNOTE_DB_STRING}
+    depends_on:
+      portnote-db:
+        condition: service_started
+    networks:
+      - proxy # Needs to be reachable by Traefik and Registrator
+
+  portnote-db:
+    image: postgres:17
+    restart: always
+    environment:
+      POSTGRES_USER: ${PORTNOTE_DB_USER}
+      POSTGRES_PASSWORD: ${PORTNOTE_DB_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - /mnt/nas/DockerServices/portnote/db:/var/lib/postgresql/data
+    networks:
+      - proxy # Needs to be reachable by Traefik and Registrator
   # # +++ Consul Server +++
   # consul-server:
   #   image: hashicorp/consul:latest

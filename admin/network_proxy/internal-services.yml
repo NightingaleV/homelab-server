@@ -12,7 +12,13 @@ http:
       service: proxmox-service
       tls:
         certResolver: le-cloudflare # Use your Let's Encrypt resolver
-
+    webadmin-router:
+      rule: "Host(`webadmin.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: webadmin-service
+      tls:
+        certResolver: le-cloudflare
     # Router for Portainer
     portainer-router:
       rule: "Host(`docker.slavik.tech`)"
@@ -103,6 +109,13 @@ http:
       service: searxng-service
       tls:
         certResolver: le-cloudflare
+    crawl4ai-router:
+      rule: "Host(`crawl.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: crawl4ai-service
+      tls:
+        certResolver: le-cloudflare
     emby-router:
       rule: "Host(`netflix.slavik.tech`)"
       entryPoints:
@@ -152,6 +165,27 @@ http:
       service: prowlarr-service
       tls:
         certResolver: le-cloudflare
+    calibre-library-router:
+      rule: "Host(`calibre-library.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: calibre-library-service
+      tls:
+        certResolver: le-cloudflare
+    calibre-router:
+      rule: "Host(`calibre.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: calibre-service
+      tls:
+        certResolver: le-cloudflare
+    netflix-requests-router:
+      rule: "Host(`requests.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: netflix-requests-service
+      tls:
+        certResolver: le-cloudflare
 
 
   services:
@@ -178,6 +212,12 @@ http:
         servers:
           # Assuming TrueNAS also forces HTTPS and uses self-signed cert internally
           - url: "https://192.168.68.95"
+    webadmin-service:
+      loadBalancer:
+        # Reference the defined transport by its name
+        serversTransport: insecure-skip-verify # <---- Use the name here
+        servers:
+          - url: "https://192.168.68.91:10000"
 
     # AI SERVICES
     # ---------------------------------------------------------------------------
@@ -226,6 +266,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.99:7777"
+    crawl4ai-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.99:11235"
+    # === MEDIA SERVICES ==========================================================
     emby-service:
       loadBalancer:
         servers:
@@ -234,6 +279,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.96:3210"
+    netflix-requests-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:5055"
     mediafiles-service:
       loadBalancer:
         servers:
@@ -254,3 +303,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.96:9696"
+    calibre-library-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.95:32015"
+    calibre-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.95:8083"

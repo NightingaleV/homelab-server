@@ -151,6 +151,13 @@ http:
       service: tvshows-service
       tls:
         certResolver: le-cloudflare
+    photos-router:
+      rule: "Host(`photos.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: photos-service
+      tls:
+        certResolver: le-cloudflare
     torrent-router:
       rule: "Host(`torrent.slavik.tech`)"
       entryPoints:
@@ -295,6 +302,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.96:8989"
+    photos-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:2283"
     torrent-service:
       loadBalancer:
         servers:

@@ -1,0 +1,17 @@
+---
+services:
+  obsidian:
+    image: lscr.io/linuxserver/obsidian:latest
+    container_name: obsidian
+    environment:
+      - TZ=Etc/UTC
+    volumes:
+      # - /mnt/nas/DockerServices/obsidian-config/:/config
+      - /mnt/nas/Obsidian:/config
+    ports:
+      - 3002:3000
+      - 3001:3001
+    # devices:
+      # - /dev/dri:/dev/dri #optional
+    shm_size: "2gb"
+    restart: unless-stopped

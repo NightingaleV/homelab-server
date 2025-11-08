@@ -17,6 +17,9 @@ services:
                 - gpu
     networks:
       - ai-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
   ui:
     image: ghcr.io/open-webui/open-webui:main
     container_name: openweb-ui
@@ -57,6 +60,9 @@ services:
       - chromadb
       - redis
       - vector-admin-postgres
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
   mcpo-tools:
     image: ghcr.io/open-webui/mcpo:main
     container_name: mcpo-tools
@@ -74,6 +80,9 @@ services:
       - ui
     networks:
       - ai-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
   litellm: # Template: https://docs.litellm.ai/docs/proxy/deploy#docker-compose
     build:
       context: .
@@ -105,6 +114,9 @@ services:
       retries: 3     # Retry up to 3 times if health check fails
       start_period: 40s  # Wait 40 seconds after container start before beginning health checks
   # Reference: https://github.com/Mintplex-Labs/anything-llm/blob/master/docker/.env.example
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
   anythingllm:
     image: mintplexlabs/anythingllm:latest
     container_name: anythingllm
@@ -151,28 +163,48 @@ services:
     restart: always
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
   n8n:
     container_name: n8n
-    image: n8nio/n8n:latest
+    image: docker.n8n.io/n8nio/n8n
     restart: unless-stopped
     environment:
-    - DB_TYPE=postgresdb
-    - DB_POSTGRESDB_HOST=vector-admin-postgres
-    - DB_POSTGRESDB_USER=vectoradmin
-    - DB_POSTGRESDB_PASSWORD=${VECTOR_ADMIN_DB_PASSWORD}
-    - DB_POSTGRESDB_DATABASE=n8n
-    - N8N_DIAGNOSTICS_ENABLED=false
-    - N8N_PERSONALIZATION_ENABLED=true
-    - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
-    - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+      - N8N_TRUST_PROXY=true         # tell Express to trust proxy
+      - N8N_PROXY_HOPS=1             # number of reverse proxies in front (bump if CF + Traefik, etc.)
+      - WEBHOOK_URL=https://n8n.slavik.tech:443
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true
+      - N8N_COMMUNITY_PACKAGES_PREVENT_LOADING=true
+      - DB_TYPE=postgresdb
+      - N8N_HOST=n8n.slavik.tech
+      - N8N_PORT=7002
+      - N8N_PROTOCOL=https
+      - N8N_RUNNERS_ENABLED=true
+      - DB_POSTGRESDB_HOST=vector-admin-postgres
+      - DB_POSTGRESDB_PORT=5433
+      - DB_POSTGRESDB_USER=vectoradmin
+      - DB_POSTGRESDB_PASSWORD=${VECTOR_ADMIN_DB_PASSWORD}
+      - DB_POSTGRESDB_DATABASE=n8n
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_PERSONALIZATION_ENABLED=true
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_USER_MANAGEMENT_JWT_SECRET=${N8N_USER_MANAGEMENT_JWT_SECRET}
+      - NODE_ENV=production
+    user: "0:0"
+    # command: "n8n"           # ✅ or omit entirely
     ports:
-      - 7002:5678
+      - 7002:7002
     volumes:
       - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/n8n/storage:/home/node/.n8n
       - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/n8n/backup:/backup
       - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/n8n/shared:/data/shared
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/n8n/local_files:/files
     depends_on:
       - vector-admin-postgres
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
     networks:
       - ai-network
   flowise:
@@ -186,6 +218,9 @@ services:
     volumes:
         - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/flowise:/root/.flowise
     entrypoint: /bin/sh -c "sleep 3; flowise start"
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
     networks:
       - ai-network
   qdrant:
@@ -348,6 +383,9 @@ services:
       - CHOWN
       - SETGID
       - SETUID
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
     logging:
       driver: json-file
       options:
@@ -365,8 +403,30 @@ services:
       - "host.docker.internal:host-gateway"
     networks:
       - ai-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=ai"
     # volumes:
       # - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/_homelab/services/ai-server/tika-config.xml:/tika-config.xml
+  # TO AUTO-UPDATE CONTAINERS USING WATCHTOWER
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      # Run monthly at 03:15 Prague time
+      - WATCHTOWER_SCHEDULE=CRON_TZ=Europe/Prague 15 3 1 * *
+      # Only touch containers you opt-in with a label
+      - WATCHTOWER_LABEL_ENABLE=true
+      # Cleanup old images after successful updates
+      - WATCHTOWER_CLEANUP=true
+      # Restart one-by-one (reduces downtime)
+      - WATCHTOWER_ROLLING_RESTART=true
+      # Optional: scope this instance so it won’t clash with other watchtowers
+      - WATCHTOWER_SCOPE=ai
+
 networks:
   ai-network:
     external: true

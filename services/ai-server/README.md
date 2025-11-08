@@ -28,3 +28,10 @@ Couldn't use the mounted folder
 ```bash
 chmod -R 777 /mnt/nas/DockerServices/anythingllm
 ```
+
+### n8n No Database
+If n8n fails to start due to no database, try recreating the container after ensuring Postgres is running.
+
+```bash
+docker exec -it vector-admin-postgres psql -U vectoradmin -p 5433 -c "CREATE DATABASE n8n;"
+docker compose restart n8n

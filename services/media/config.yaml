@@ -1,0 +1,135 @@
+# Filebrowser Quantum Configuration
+
+# Server configuration
+port: 8080
+baseURL: "/filebrowser"
+address: ""
+log: "stdout"
+root: "/srv"
+
+# Database configuration
+database:
+  path: "/database/filebrowser.db"
+  type: "bolt"
+
+# Authentication
+auth:
+  method: "json"
+  header: ""
+  key: ""
+  signup: false
+  lifetime: 86400 # 24 hours in seconds
+  min_chars: 8
+
+# Default user settings
+defaults:
+  scope: "."
+  locale: "en"
+  viewMode: "list"
+  singleClick: false
+  sorting:
+    by: "name"
+    asc: true
+  perm:
+    admin: false
+    execute: true
+    create: true
+    rename: true
+    modify: true
+    delete: true
+    share: true
+    download: true
+
+# Branding and UI customization
+branding:
+  name: "Media Server File Browser"
+  disableExternal: false
+  disableUsedPercentage: false
+  theme: "auto" # Options: light, dark, auto
+  color: "#2196f3"
+
+# Resources and limits
+commands:
+  - name: "Terminal"
+    command: "bash"
+    args: []
+    env: []
+  - name: "Video Preview"
+    command: "ffprobe"
+    args: ["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", "{{file}}"]
+    env: []
+
+# File search settings
+search:
+  indexes: true
+  ignore:
+    - "^\\."
+    - "^\\_"
+    - "^node_modules$"
+    - "^.git$"
+    - "^.DS_Store$"
+
+# Security settings
+security:
+  allowEdit: true
+  allowNew: true
+  allowPublish: true
+  hideHiddenFiles: false
+  cors:
+    enabled: false
+    credentials: false
+    allowedOrigins: ["*"]
+    allowedMethods: ["GET", "POST", "PATCH", "PUT", "DELETE"]
+    allowedHeaders: ["*"]
+  recaptcha:
+    enabled: false
+    site: ""
+    secret: ""
+
+# Quantum specific features
+quantum:
+  enabled: true
+  scan:
+    enabled: true
+    interval: 120 # scan interval in minutes
+    exclude:
+      - "^\\."
+      - "^\\_"
+      - "tmp$"
+      - "temp$"
+  image:
+    preview:
+      enabled: true
+      quality: 80
+    thumbnails:
+      enabled: true
+      width: 250
+      height: 250
+  video:
+    preview:
+      enabled: true
+      quality: "medium" # low, medium, high
+    thumbnails:
+      enabled: true
+      interval: 10 # seconds between thumbnails
+  fileinfo:
+    enabled: true
+  extractors:
+    zip: true
+    tar: true
+    gzip: true
+    rar: true
+  caching:
+    enabled: true
+    maxage: 86400 # 24 hours in seconds
+  
+# Webhook notifications
+hooks:
+  before_copy: []
+  after_copy: []
+  before_delete: []
+  after_delete: []
+  before_upload: []
+  after_upload: []
+  before_save: []
+  after_save: []

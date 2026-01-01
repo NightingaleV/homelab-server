@@ -7,7 +7,11 @@ This repository documents homelab setup, configurations, and Docker Compose file
 ## Commands:
 
 - Docker Compose: `docker compose down && docker image prune -a -f && docker compose build && docker compose up -d`
+- **Updating Container**: `docker compose up -d --pull always --no-deps --force-recreate prowlarr`
 
+- **Schedule Restart Script**: `./scripts/schedule_restart_compose.sh <service-name> <delay-in-minutes>`
+  - View Restart Log: `cat ./logs/time_script.log`
+  - Example: `/mnt/nas/DockerServices/_homelab/scripts/schedule_restart_compose.sh schedule /mnt/nas/DockerServices/_homelab/admin/network_proxy "tomorrow 07:00"`
 
 ## Wishlist
 

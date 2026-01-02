@@ -3,6 +3,7 @@ services:
     image: ghcr.io/calibrain/calibre-web-automated-book-downloader:latest
     container_name: calibre-web-automated-book-downloader
     environment:
+      EXT_BYPASSER_URL: http://flaresolverr:8191
       # TZ: America/New_York
       PUID: 3005
       PGID: 3000
@@ -14,3 +15,5 @@ services:
       - ${DOCKER_VOLUME_STORAGE}/calibre_web_automated_downloader:/config
       # Download client mount (must match your torrent/usenet client's volume)
       # - /path/to/downloads:/downloads
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest

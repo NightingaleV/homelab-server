@@ -54,3 +54,22 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  calibre-web-automated-book-downloader:
+    image: ghcr.io/calibrain/calibre-web-automated-book-downloader:latest
+    container_name: calibre-web-automated-book-downloader
+    environment:
+      EXT_BYPASSER_URL: http://flaresolverr:8191
+      # TZ: America/New_York
+      PUID: 3005
+      PGID: 3000
+    ports:
+      - 8084:8084
+    restart: unless-stopped
+    volumes:
+      - ${DATA_STORAGE}/Books/booklore/bookdrop:/cwa-book-ingest
+      - ${DOCKER_VOLUME_STORAGE}/calibre_web_automated_downloader:/config
+      # Download client mount (must match your torrent/usenet client's volume)
+      # - /path/to/downloads:/downloads
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:latest

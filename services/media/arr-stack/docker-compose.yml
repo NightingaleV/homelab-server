@@ -6,28 +6,33 @@ services:
       - PUID=3005 # Replace with your PUID
       - PGID=3000 # Replace with your PGID
       - TZ=Etc/UTC # Replace with your Timezone (e.g., America/New_York)
-    networks:
-      - media-network
+    # networks:
+      # - media-network
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/prowlarr:/config # Host path : Container path
-    ports:
-      - "9696:9696" # Host port : Container port
+    # ports:
+      # - "9696:9696" # Host port : Container port
     restart: always
+    network_mode: service:vpn
+    depends_on:
+      - vpn
   flaresolverr:
     image: ghcr.io/flaresolverr/flaresolverr:latest
     container_name: flaresolverr
     restart: unless-stopped
-    ports:
-      - 8191:8191/tcp
-    expose:
-      - 8191
+    # ports:
+      # - 8191:8191/tcp
+    # expose:
+      # - 8191
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_HTML=${LOG_HTML:-false}
       - CAPTCHA_SOLVER=${CAPTCHA_SOLVER:-none}
       - TZ=${TZ}
+    network_mode: service:vpn
     depends_on:
       - prowlarr
+      - vpn
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
@@ -143,6 +148,7 @@ services:
     #   - /dev/net/tun:/dev/net/tun
     networks:
       - media-network # Add to media-network so other containers can reach it
+    
     ports:
       # --- Ports for containers using the VPN ---
       # Format: HOST_PORT:CONTAINER_PORT_INSIDE_VPN_CONTAINER
@@ -154,6 +160,9 @@ services:
       # Firefox Web Interface: Make HOST_PORT match original firefox port
       - "3210:3000"
       # --- Add other ports for VPN'd containers here if needed ---
+      # add these:
+      - "9696:9696"   # Prowlarr UI/API
+      - "8191:8191"   # FlareSolverr
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/gluetun:/gluetun # Persistent storage for Gluetun data
     environment:
@@ -161,8 +170,11 @@ services:
       - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
       - VPN_TYPE=${VPN_TYPE}
       # WireGuard specific (only used if VPN_TYPE=wireguard)
+      - DNS_ADDRESS=127.0.0.11
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - WIREGUARD_ADDRESSES=${WIREGUARD_ADDRESSES}
+      - WIREGUARD_PERSISTENT_KEEPALIVE_INTERVAL=15s
+      - FIREWALL_OUTBOUND_SUBNETS=172.18.0.0/16   # <-- replace with the subnet you got
       # OpenVPN specific (only used if VPN_TYPE=openvpn)
       # - OPENVPN_USER=${OPENVPN_USER}
       # - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}

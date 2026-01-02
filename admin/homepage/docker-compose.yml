@@ -2,6 +2,7 @@ services:
   homepage:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
+    restart: always
     ports:
       - 3000:3000
     volumes:

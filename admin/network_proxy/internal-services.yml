@@ -12,13 +12,13 @@ http:
       service: proxmox-service
       tls:
         certResolver: le-cloudflare # Use your Let's Encrypt resolver
-    webadmin-router:
-      rule: "Host(`webadmin.slavik.tech`)"
-      entryPoints:
-        - websecure
-      service: webadmin-service
-      tls:
-        certResolver: le-cloudflare
+    # webadmin-router:
+    #   rule: "Host(`webadmin.slavik.tech`)"
+    #   entryPoints:
+    #     - websecure
+    #   service: webadmin-service
+    #   tls:
+    #     certResolver: le-cloudflare
     # Router for Portainer
     portainer-router:
       rule: "Host(`docker.slavik.tech`)"
@@ -186,11 +186,32 @@ http:
       service: calibre-service
       tls:
         certResolver: le-cloudflare
-    netflix-requests-router:
-      rule: "Host(`requests.slavik.tech`)"
+    bookdownload-router:
+      rule: "Host(`download-book.slavik.tech`)"
       entryPoints:
         - websecure
-      service: netflix-requests-service
+      service: bookdownload-service
+      tls:
+        certResolver: le-cloudflare
+    booklore-router:
+      rule: "Host(`books.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: booklore-service
+      tls:
+        certResolver: le-cloudflare
+    netflix-request-router:
+      rule: "Host(`request.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: netflix-request-service
+      tls:
+        certResolver: le-cloudflare
+    obsidian-router:
+      rule: "Host(`obsidian.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: obsidian-service
       tls:
         certResolver: le-cloudflare
 
@@ -219,12 +240,12 @@ http:
         servers:
           # Assuming TrueNAS also forces HTTPS and uses self-signed cert internally
           - url: "https://192.168.68.95"
-    webadmin-service:
-      loadBalancer:
-        # Reference the defined transport by its name
-        serversTransport: insecure-skip-verify # <---- Use the name here
-        servers:
-          - url: "https://192.168.68.91:10000"
+    # webadmin-service:
+    #   loadBalancer:
+    #     # Reference the defined transport by its name
+    #     serversTransport: insecure-skip-verify # <---- Use the name here
+    #     servers:
+    #       - url: "https://192.168.68.91:10000"
 
     # AI SERVICES
     # ---------------------------------------------------------------------------
@@ -232,6 +253,10 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.99:7000"
+    # openwebui-service:
+      # loadBalancer:
+        # servers:
+          # - url: "http://192.168.68.99:7000"
     anything-service:
       loadBalancer:
         servers:
@@ -286,7 +311,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.96:3210"
-    netflix-requests-service:
+    netflix-request-service:
       loadBalancer:
         servers:
           - url: "http://192.168.68.96:5055"
@@ -314,11 +339,23 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.96:9696"
-    calibre-library-service:
-      loadBalancer:
-        servers:
-          - url: "http://192.168.68.95:32015"
+    # calibre-library-service:
+      # loadBalancer:
+        # servers:
+          # - url: "http://192.168.68.95:32015"
     calibre-service:
       loadBalancer:
         servers:
-          - url: "http://192.168.68.95:8083"
+          - url: "http://192.168.68.96:8083"
+    booklore-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:6060"
+    bookdownload-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:8084"
+    obsidian-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.96:3002"

@@ -3,6 +3,7 @@ env/*
 .env
 */local.env
 AGENTS.md
+**/homepage/config/**
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

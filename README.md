@@ -13,6 +13,11 @@ This repository documents homelab setup, configurations, and Docker Compose file
   - View Restart Log: `cat ./logs/time_script.log`
   - Example: `/mnt/nas/DockerServices/_homelab/scripts/schedule_restart_compose.sh schedule /mnt/nas/DockerServices/_homelab/admin/network_proxy "tomorrow 07:00"`
 
+## Traefik Dynamic Config
+
+- Add or edit file-provider routes in `admin/network_proxy/routing/` (for example `internal-services.yml`).
+- Traefik watches that directory and hot-reloads changes, so no container restart is required.
+
 ## Wishlist
 
 - Try Supabase: https://github.com/supabase-community/supabase-traefik/blob/main/docker-compose.example.yml

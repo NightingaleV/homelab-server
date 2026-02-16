@@ -222,6 +222,13 @@ http:
       service: obsidian-service
       tls:
         certResolver: le-cloudflare
+    arcane-router:
+      rule: "Host(`arcane.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: arcane-service
+      tls:
+        certResolver: le-cloudflare
 
 
   services:
@@ -373,3 +380,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.96:3002"
+    arcane-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.91:3552"

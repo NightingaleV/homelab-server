@@ -1,0 +1,41 @@
+http:
+  routers:
+    root:
+      rule: "Host(`slavik.tech`)"
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: cloudflare
+      middlewares: ["redirect-to-coolify"]
+      service: "noop@internal"
+
+    coolify:
+      rule: "Host(`coolify.slavik.tech`)"
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: cloudflare
+      service: coolify-svc
+
+    llm:
+      rule: "Host(`llm.slavik.tech`)"
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: cloudflare
+      service: llm-svc
+  middlewares:
+    redirect-to-coolify:
+      redirectRegex:
+        regex: "^https?://slavik\\.tech/(.*)"
+        replacement: "https://coolify.slavik.tech/$1"
+        permanent: true
+  services:
+    coolify-svc:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://69.62.116.191:8000"
+
+    llm-svc:
+      loadBalancer:
+        passHostHeader: true
+        servers:
+          - url: "http://69.62.116.191:4000"

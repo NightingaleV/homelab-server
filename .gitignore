@@ -5,6 +5,8 @@ env/*
 AGENTS.md
 **/homepage/config/**
 
+/.git-keys
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

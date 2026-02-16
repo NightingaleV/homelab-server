@@ -70,10 +70,10 @@ services:
       # Mount Docker socket to allow Traefik to discover other containers (if needed in future)
       - /var/run/docker.sock:/var/run/docker.sock:ro
       # Mount static configuration file
-      - /mnt/nas/DockerServices/_homelab/admin/network_proxy/traefik.yml:/etc/traefik/traefik.yml
+      - ./traefik.yml:/etc/traefik/traefik.yml
       # Mount directory for dynamic configuration files
       # - /mnt/nas/DockerServices/traefik/conf.d:/etc/traefik/conf.d
-      - /mnt/nas/DockerServices/_homelab/admin/network_proxy/internal-services.yml:/etc/traefik/conf.d/internal-services.yml
+      - ./internal-services.yml:/etc/traefik/conf.d/internal-services.yml
       # Mount Let's Encrypt certificate storage
       - /mnt/nas/DockerServices/traefik/acme.json:/acme.json
       # Mount Traefik's own configuration directory

@@ -37,6 +37,14 @@ http:
       tls:
         certResolver: le-cloudflare
 
+    komodo-router:
+      rule: "Host(`komodo.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: komodo-service
+      tls:
+        certResolver: le-cloudflare
+
     # Router for TrueNAS
     openwebui-router:
       rule: "Host(`chat.slavik.tech`)"
@@ -240,6 +248,12 @@ http:
         servers:
           # Assuming TrueNAS also forces HTTPS and uses self-signed cert internally
           - url: "https://192.168.68.95"
+
+    # Service definition for Komodo
+    komodo-service:
+      loadBalancer:
+        servers:
+          - url: "http://komodo-core:9120"
     # webadmin-service:
     #   loadBalancer:
     #     # Reference the defined transport by its name

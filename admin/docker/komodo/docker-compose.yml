@@ -26,14 +26,6 @@ services:
     container_name: komodo-core
     labels:
       komodo.skip: # Prevent Komodo from stopping with StopAllContainers
-      - "traefik.enable=true"
-      - "traefik.http.routers.komodo.entrypoints=websecure"
-      - "traefik.http.routers.komodo.rule=Host(`komodo.slavik.tech`)"
-      - "traefik.http.routers.komodo.tls=true"
-      - "traefik.http.routers.komodo.tls.certresolver=le-cloudflare"
-      - "traefik.http.routers.komodo.service=komodo"
-      - "traefik.http.services.komodo.loadbalancer.server.port=9120"
-      - "traefik.docker.network=proxy"
     restart: unless-stopped
     depends_on:
       - mongo
@@ -48,13 +40,12 @@ services:
       ## Store dated backups of the database
       - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/komodo/backups:/backups
       ## Store sync files on server (optional)
-      # - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/komodo/syncs:/syncs
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/komodo/syncs:/syncs
     extra_hosts:
       ## Allows connection to systemd Periphery on the host at "https://host.docker.internal:8120"
       - host.docker.internal:host-gateway
     networks:
       - admin
-      - proxy
 
   ## Local Periphery - manages Docker on this host
   ## For remote servers, install Periphery separately (see README.md)
@@ -77,6 +68,4 @@ services:
 
 networks:
   admin:
-    external: true
-  proxy:
     external: true

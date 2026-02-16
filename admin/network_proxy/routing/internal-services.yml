@@ -253,7 +253,7 @@ http:
     komodo-service:
       loadBalancer:
         servers:
-          - url: "http://komodo-core:9120"
+          - url: "http://192.168.68.91:9120"
     # webadmin-service:
     #   loadBalancer:
     #     # Reference the defined transport by its name

@@ -63,7 +63,7 @@ providers:
   #   refreshInterval: 30s
   file:
     # Enable File provider to read dynamic configuration from files
-    directory: /etc/traefik/conf.d # Path inside the container
+    directory: /etc/traefik/routing # Path inside the container
     watch: true # Watch for changes in the directory
 
 # Log level (DEBUG, INFO, WARNING, ERROR)

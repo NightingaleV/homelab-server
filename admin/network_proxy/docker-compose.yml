@@ -72,8 +72,7 @@ services:
       # Mount static configuration file
       - ./traefik.yml:/etc/traefik/traefik.yml
       # Mount directory for dynamic configuration files
-      # - /mnt/nas/DockerServices/traefik/conf.d:/etc/traefik/conf.d
-      - ./internal-services.yml:/etc/traefik/conf.d/internal-services.yml
+      - ./routing:/etc/traefik/routing
       # Mount Let's Encrypt certificate storage
       - /mnt/nas/DockerServices/traefik/acme.json:/acme.json
       # Mount Traefik's own configuration directory

@@ -1,0 +1,86 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: forgejo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${FORGEJO_DB_NAME}
+      POSTGRES_USER: ${FORGEJO_DB_USER}
+      POSTGRES_PASSWORD: ${FORGEJO_DB_PASS}
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/forgejo/db:/var/lib/postgresql/data
+    networks: [forgejo]
+
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:latest
+    container_name: forgejo
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      # Basic
+      USER_UID: "1000"
+      USER_GID: "1000"
+      FORGEJO__server__DOMAIN: ${FORGEJO_DOMAIN}
+      FORGEJO__server__ROOT_URL: ${FORGEJO_ROOT_URL}
+      FORGEJO__server__SSH_DOMAIN: ${FORGEJO_SSH_DOMAIN}
+      FORGEJO__server__SSH_PORT: ${FORGEJO_SSH_PORT}     # external port users connect to
+      FORGEJO__server__SSH_LISTEN_PORT: 22               # internal listen port
+
+      # Database (Postgres)
+      FORGEJO__database__DB_TYPE: postgres
+      FORGEJO__database__HOST: db:5432
+      FORGEJO__database__NAME: ${FORGEJO_DB_NAME}
+      FORGEJO__database__USER: ${FORGEJO_DB_USER}
+      FORGEJO__database__PASSWD: ${FORGEJO_DB_PASS}
+
+      # Actions (server-side toggle)
+      FORGEJO__actions__ENABLED: "true"
+
+      # Optional but nice
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__log__LEVEL: "Info"
+    ports:
+      - "3000:3000"   # Web
+      - "2222:22"     # SSH for git over SSH (external:internal)
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/forgejo/server:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks: [forgejo]
+
+  runner:
+    image: codeberg.org/forgejo/runner:latest
+    container_name: forgejo-runner
+    restart: unless-stopped
+    depends_on: [forgejo]
+    environment:
+      # Runner talks to Forgejo over HTTP(S)
+      FORGEJO_INSTANCE_URL: ${FORGEJO_ROOT_URL}
+      # Put your runner registration token here (or use a .env file)
+      FORGEJO_RUNNER_REGISTRATION_TOKEN: ${FORGEJO_RUNNER_TOKEN}
+
+      # Allows runner to launch job containers on the host docker daemon:
+      DOCKER_HOST: unix:///var/run/docker.sock
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE}/forgejo/runner:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    # First start registers, then it runs the daemon automatically
+    command: >
+      sh -lc "
+        forgejo-runner register
+          --no-interactive
+          --instance ${FORGEJO_INSTANCE_URL}
+          --token ${FORGEJO_RUNNER_REGISTRATION_TOKEN}
+          --name ${FORGEJO_RUNNER_NAME}
+          --labels ${FORGEJO_RUNNER_LABELS}
+        || true;
+        forgejo-runner daemon
+      "
+    networks: [forgejo]
+
+networks:
+  forgejo:
+    name: forgejo

@@ -75,7 +75,7 @@ services:
   #   container_name: forgejo-dind
   #   privileged: true
   #   restart: unless-stopped
-  #   command: ["dockerd", "-H", "tcp://0.0.0.0:2375", "--tls=false"]
+    # command: ["dockerd", "-H", "tcp://0.0.0.0:2375", "--tls=false"]
 
   # runner:
   #   image: code.forgejo.org/forgejo/runner:12

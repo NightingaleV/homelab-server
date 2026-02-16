@@ -43,8 +43,8 @@ services:
       FORGEJO__security__INSTALL_LOCK: "true"
       FORGEJO__log__LEVEL: "Info"
     ports:
-      - "3000:3000"   # Web
-      - "2222:22"     # SSH for git over SSH (external:internal)
+      - '3000:3000'
+      - '222:22' 
     volumes:
       - ${DOCKER_VOLUME_STORAGE}/forgejo/server:/data
       - /etc/timezone:/etc/timezone:ro
@@ -72,8 +72,8 @@ services:
       sh -lc "
         forgejo-runner register
           --no-interactive
-          --instance ${FORGEJO_INSTANCE_URL}
-          --token ${FORGEJO_RUNNER_REGISTRATION_TOKEN}
+          --instance ${FORGEJO_ROOT_URL}
+          --token ${FORGEJO_RUNNER_TOKEN}
           --name ${FORGEJO_RUNNER_NAME}
           --labels ${FORGEJO_RUNNER_LABELS}
         || true;

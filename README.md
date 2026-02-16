@@ -12,6 +12,8 @@ This repository documents homelab setup, configurations, and Docker Compose file
 - **Schedule Restart Script**: `./scripts/schedule_restart_compose.sh <service-name> <delay-in-minutes>`
   - View Restart Log: `cat ./logs/time_script.log`
   - Example: `/mnt/nas/DockerServices/_homelab/scripts/schedule_restart_compose.sh schedule /mnt/nas/DockerServices/_homelab/admin/network_proxy "tomorrow 07:00"`
+- Cleanup Unused Images: `docker image prune -a -f`
+- Cleanup Stack: `docker compose down --rmi all -v --remove-orphans`
 
 ## Traefik Dynamic Config
 

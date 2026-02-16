@@ -1,8 +1,6 @@
-version: "3.9"
-
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:latest
     container_name: forgejo-db
     restart: unless-stopped
     environment:
@@ -10,11 +8,11 @@ services:
       POSTGRES_USER: ${FORGEJO_DB_USER}
       POSTGRES_PASSWORD: ${FORGEJO_DB_PASS}
     volumes:
-      - ${DOCKER_VOLUME_STORAGE}/forgejo/db:/var/lib/postgresql/data
+      - ${DOCKER_VOLUME_STORAGE}/forgejo/db:/var/lib/postgresql/docker
     networks: [forgejo]
 
   forgejo:
-    image: data.forgejo.org/forgejo/forgejo:latest
+    image: data.forgejo.org/forgejo/forgejo:13
     container_name: forgejo
     restart: unless-stopped
     depends_on: [db]
@@ -52,7 +50,7 @@ services:
     networks: [forgejo]
 
   runner:
-    image: data.forgejo.org/forgejo/runner:latest
+    image: code.forgejo.org/forgejo/runner:12
     container_name: forgejo-runner
     restart: unless-stopped
     depends_on: [forgejo]

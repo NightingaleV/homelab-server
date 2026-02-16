@@ -67,16 +67,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     # First start registers, then it runs the daemon automatically
     command: >
-      sh -lc "
-        forgejo-runner register
-          --no-interactive
-          --instance ${FORGEJO_ROOT_URL}
-          --token ${FORGEJO_RUNNER_TOKEN}
-          --name ${FORGEJO_RUNNER_NAME}
-          --labels ${FORGEJO_RUNNER_LABELS}
-        || true;
-        forgejo-runner daemon
-      "
+      sh -lc "forgejo-runner register --no-interactive --instance ${FORGEJO_ROOT_URL} --token ${FORGEJO_RUNNER_TOKEN} --name ${FORGEJO_RUNNER_NAME} --labels ${FORGEJO_RUNNER_LABELS} || true; forgejo-runner daemon"
     networks: [forgejo]
 
 networks:

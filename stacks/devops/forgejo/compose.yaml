@@ -70,34 +70,37 @@ services:
   #     sh -lc "forgejo-runner register --no-interactive --instance ${FORGEJO_ROOT_URL} --token ${FORGEJO_RUNNER_TOKEN} --name ${FORGEJO_RUNNER_NAME} --labels ${FORGEJO_RUNNER_LABELS} || true; forgejo-runner daemon"
     # networks: [forgejo]
 
-  # dind:
-  #   image: docker:29.2.1-dind
-  #   container_name: forgejo-dind
-  #   privileged: true
-  #   restart: unless-stopped
-    # command: ["dockerd", "-H", "tcp://0.0.0.0:2375", "--tls=false"]
+  dind:
+    image: docker:29.2.1-dind
+    container_name: forgejo-dind
+    privileged: true
+    restart: unless-stopped
+    command: ["dockerd", "-H", "tcp://0.0.0.0:2375", "--tls=false"]
+    networks: [forgejo]
 
-  # runner:
-  #   image: code.forgejo.org/forgejo/runner:12
-  #   links:
-  #     - dind
-  #   depends_on:
-  #     dind:
-  #       condition: service_started
-  #   container_name: forgejo-runner
-  #   user: 1000:1000 # replace this with the UUID:GUID of the user you want to run the runner as
-  #   environment:
-  #     # Runner talks to Forgejo over HTTP(S)
-  #     FORGEJO_INSTANCE_URL: ${FORGEJO_ROOT_URL}
-  #     # Put your runner registration token here (or use a .env file)
-  #     FORGEJO_RUNNER_REGISTRATION_TOKEN: ${FORGEJO_RUNNER_TOKEN}
-  #     DOCKER_HOST: tcp://dind:2375
-  #   volumes:
-  #     # replace the left-hand side from the ':' with your own path
-  #     - ${DOCKER_VOLUME_STORAGE}/forgejo/runner:/data
-  #     - ${DOCKER_VOLUME_STORAGE}/forgejo/runner/config.yaml:/config.yaml
-  #   restart: unless-stopped
-  #   # command: '/bin/sh -c "while : ; do sleep 1 ; done ;"'
+  runner:
+    image: code.forgejo.org/forgejo/runner:12
+    links:
+      - dind
+    depends_on:
+      dind:
+        condition: service_started
+      forgejo:
+        condition: service_started
+    container_name: forgejo-runner
+    user: 1000:1000 # replace this with the UUID:GUID of the user you want to run the runner as
+    environment:
+      # Runner talks to Forgejo over HTTP(S)
+      FORGEJO_INSTANCE_URL: ${FORGEJO_ROOT_URL}
+      # Put your runner registration token here (or use a .env file)
+      FORGEJO_RUNNER_REGISTRATION_TOKEN: ${FORGEJO_RUNNER_TOKEN}
+      DOCKER_HOST: tcp://dind:2375
+    volumes:
+      # replace the left-hand side from the ':' with your own path
+      - ${DOCKER_VOLUME_STORAGE}/forgejo/runner:/data
+      - ${DOCKER_VOLUME_STORAGE}/forgejo/runner/config.yaml:/config.yaml
+    restart: unless-stopped
+    command: '/bin/sh -c "while : ; do sleep 1 ; done ;"'
     # command: '/bin/sh -c "sleep 5; forgejo-runner daemon --config /config.yaml"'
 
 networks:

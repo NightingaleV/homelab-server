@@ -229,6 +229,13 @@ http:
       service: arcane-service
       tls:
         certResolver: le-cloudflare
+    forgejo-router:
+      rule: "Host(`git.slavik.tech`)"
+      entryPoints:
+        - websecure
+      service: forgejo-service
+      tls:
+        certResolver: le-cloudflare
 
 
   services:
@@ -384,3 +391,7 @@ http:
       loadBalancer:
         servers:
           - url: "http://192.168.68.91:3552"
+    forgejo-service:
+      loadBalancer:
+        servers:
+          - url: "http://192.168.68.110:3000"

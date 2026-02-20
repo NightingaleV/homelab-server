@@ -1,0 +1,252 @@
+# Paperless-ngx Stack
+# Full document management system with AI-powered metadata and OCR
+#
+# Services:
+#   - Paperless-ngx    : Document management system (port 8010)
+#   - PostgreSQL        : Database backend
+#   - Redis (Valkey)    : Cache and message broker
+#   - Gotenberg         : Document conversion API
+#   - Apache Tika       : Content detection and extraction
+#   - Paperless-AI      : AI-powered metadata suggestions (port 8020)
+#   - Paperless-GPT     : Vision OCR for Paperless (port 8030)
+#   - Dozzle            : Real-time Docker log viewer (port 8040)
+#
+# Prerequisites:
+#   - Ollama running on host (default: port 11434) — already in ai-server stack
+#   - Pull models in Ollama: llama3.2:3b, minicpm-v:8b
+#   - After first start: generate API token in Paperless (Profile → API Tokens)
+#     and set PAPERLESS_API_TOKEN in .env, then restart AI services
+#
+# Usage:
+#   cp .env.example .env   # edit with your values
+#   docker compose up -d
+
+name: paperless
+
+services:
+  # ──────────────────────────────────────────────
+  # Core: Paperless-ngx
+  # ──────────────────────────────────────────────
+  paperless:
+    image: ghcr.io/paperless-ngx/paperless-ngx:latest
+    container_name: paperless
+    restart: unless-stopped
+    ports:
+      - "${PAPERLESS_PORT:-8010}:8000"
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/paperless/data:/usr/src/paperless/data
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/paperless/media:/usr/src/paperless/media
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/paperless/export:/usr/src/paperless/export
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/paperless/consume:/usr/src/paperless/consume
+    environment:
+      PAPERLESS_REDIS: redis://paperless-redis:6379
+      PAPERLESS_DBHOST: paperless-postgres
+      PAPERLESS_DBNAME: ${POSTGRES_DB:-paperless}
+      PAPERLESS_DBUSER: ${POSTGRES_USER:-paperless}
+      PAPERLESS_DBPASS: ${POSTGRES_PASSWORD}
+      PAPERLESS_TIKA_ENABLED: 1
+      PAPERLESS_TIKA_GOTENBERG_ENDPOINT: http://paperless-gotenberg:3000
+      PAPERLESS_TIKA_ENDPOINT: http://paperless-tika:9998
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY}
+      PAPERLESS_ADMIN_USER: ${PAPERLESS_ADMIN_USER:-admin}
+      PAPERLESS_ADMIN_PASSWORD: ${PAPERLESS_ADMIN_PASSWORD}
+      PAPERLESS_URL: ${PAPERLESS_URL:-http://localhost:8010}
+      PAPERLESS_TIME_ZONE: ${TZ:-Europe/Prague}
+      PAPERLESS_OCR_LANGUAGE: ${PAPERLESS_OCR_LANGUAGE:-eng}
+      PAPERLESS_OCR_LANGUAGES: ${PAPERLESS_OCR_LANGUAGES:-}
+      USERMAP_UID: ${PUID:-1000}
+      USERMAP_GID: ${PGID:-1000}
+    depends_on:
+      paperless-postgres:
+        condition: service_healthy
+      paperless-redis:
+        condition: service_healthy
+      paperless-gotenberg:
+        condition: service_started
+      paperless-tika:
+        condition: service_started
+    networks:
+      - paperless-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=paperless"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ──────────────────────────────────────────────
+  # Database: PostgreSQL
+  # ──────────────────────────────────────────────
+  paperless-postgres:
+    image: postgres:16-alpine
+    container_name: paperless-postgres
+    restart: unless-stopped
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/paperless/postgres:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-paperless}
+      POSTGRES_USER: ${POSTGRES_USER:-paperless}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    networks:
+      - paperless-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-paperless} -d ${POSTGRES_DB:-paperless}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # Cache: Redis (Valkey)
+  # ──────────────────────────────────────────────
+  paperless-redis:
+    image: docker.io/valkey/valkey:8-alpine
+    container_name: paperless-redis
+    restart: unless-stopped
+    command: "valkey-server --save 30 1"
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/paperless/redis:/data
+    networks:
+      - paperless-network
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ──────────────────────────────────────────────
+  # Document Conversion: Gotenberg
+  # ──────────────────────────────────────────────
+  paperless-gotenberg:
+    image: docker.io/gotenberg/gotenberg:8
+    container_name: paperless-gotenberg
+    restart: unless-stopped
+    command:
+      - "gotenberg"
+      - "--chromium-disable-javascript=true"
+      - "--chromium-allow-list=file:///tmp/.*"
+    networks:
+      - paperless-network
+
+  # ──────────────────────────────────────────────
+  # Content Extraction: Apache Tika
+  # Note: A separate Tika instance for stack isolation.
+  #       Alternatively, reuse the ai-server Tika at host.docker.internal:9998
+  # ──────────────────────────────────────────────
+  paperless-tika:
+    image: apache/tika:latest-full
+    container_name: paperless-tika
+    restart: unless-stopped
+    networks:
+      - paperless-network
+
+  # ──────────────────────────────────────────────
+  # AI: Paperless-AI (metadata suggestions)
+  # Requires: Ollama on host, Paperless API token
+  # ──────────────────────────────────────────────
+  paperless-ai:
+    image: clusterzx/paperless-ai
+    container_name: paperless-ai
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true
+    ports:
+      - "${PAPERLESS_AI_PORT:-8020}:3000"
+    environment:
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      PAPERLESS_AI_PORT: 3000
+      PAPERLESS_API_URL: http://paperless:8000/api
+      PAPERLESS_API_TOKEN: ${PAPERLESS_API_TOKEN}
+      PAPERLESS_USERNAME: ${PAPERLESS_ADMIN_USER:-admin}
+      AI_PROVIDER: ${AI_PROVIDER:-ollama}
+      OLLAMA_API_URL: ${OLLAMA_API_URL:-http://host.docker.internal:11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+      RAG_SERVICE_URL: http://localhost:8000
+      RAG_SERVICE_ENABLED: "true"
+      SCAN_INTERVAL: "${SCAN_INTERVAL:-*/30 * * * *}"
+      PAPERLESS_URL: http://paperless:8000
+    volumes:
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/paperless/paperless-ai:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      paperless:
+        condition: service_healthy
+    networks:
+      - paperless-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=paperless"
+
+  # ──────────────────────────────────────────────
+  # AI: Paperless-GPT (vision OCR + metadata)
+  # Requires: Ollama on host with vision model (minicpm-v:8b)
+  # ──────────────────────────────────────────────
+  paperless-gpt:
+    image: icereed/paperless-gpt:latest
+    container_name: paperless-gpt
+    restart: unless-stopped
+    ports:
+      - "${PAPERLESS_GPT_PORT:-8030}:8080"
+    environment:
+      PAPERLESS_BASE_URL: http://paperless:8000
+      PAPERLESS_API_TOKEN: ${PAPERLESS_API_TOKEN}
+      # PAPERLESS_PUBLIC_URL: ${PAPERLESS_URL:-http://localhost:8010}  # uncomment if behind reverse proxy
+      LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+      LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+      OLLAMA_HOST: ${OLLAMA_API_URL:-http://host.docker.internal:11434}
+      OLLAMA_CONTEXT_LENGTH: "${OLLAMA_CONTEXT_LENGTH:-8192}"
+      TOKEN_LIMIT: "${TOKEN_LIMIT:-1000}"
+      LLM_LANGUAGE: ${LLM_LANGUAGE:-English}
+      OCR_PROVIDER: "llm"
+      VISION_LLM_PROVIDER: ${VISION_LLM_PROVIDER:-ollama}
+      VISION_LLM_MODEL: ${VISION_LLM_MODEL:-minicpm-v:8b}
+      AUTO_OCR_TAG: "paperless-gpt-ocr-auto"
+      AUTO_TAG: "paperless-gpt-auto"
+      MANUAL_TAG: "paperless-gpt-manual"
+      PDF_OCR_TAGGING: "true"
+      PDF_OCR_COMPLETE_TAG: "paperless-gpt-ocr-complete"
+      PDF_UPLOAD: "false"
+      LOG_LEVEL: ${PAPERLESS_GPT_LOG_LEVEL:-INFO}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      paperless:
+        condition: service_healthy
+    networks:
+      - paperless-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=paperless"
+
+  # ──────────────────────────────────────────────
+  # Logs: Dozzle (real-time Docker log viewer)
+  # ──────────────────────────────────────────────
+  paperless-dozzle:
+    image: amir20/dozzle:latest
+    container_name: paperless-dozzle
+    restart: unless-stopped
+    ports:
+      - "${DOZZLE_PORT:-8040}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      DOZZLE_FILTER: "name=paperless*"
+    networks:
+      - paperless-network
+
+networks:
+  paperless-network:
+    name: paperless-network
+    driver: bridge

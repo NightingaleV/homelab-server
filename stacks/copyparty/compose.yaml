@@ -1,0 +1,14 @@
+services:
+  copyparty:
+    image: copyparty/ac:latest
+    container_name: copyparty
+    restart: unless-stopped
+    ports:
+      - "3923:3923"
+    volumes:
+      - ./copyparty.conf:/cfg/config.conf:ro
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/copyparty/db:/cfg/hists
+      - ${DOCKER_VOLUME_STORAGE:-/mnt/nas/DockerServices}/copyparty/files:/media
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+      - "com.centurylinklabs.watchtower.scope=services"

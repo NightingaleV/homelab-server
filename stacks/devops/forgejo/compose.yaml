@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${FORGEJO_DB_USER}
       POSTGRES_PASSWORD: ${FORGEJO_DB_PASS}
     volumes:
-      - ${DOCKER_VOLUME_STORAGE}/forgejo/db:/var/lib/postgresql/docker
+      - ${DOCKER_VOLUME_STORAGE}/forgejo/db:/var/lib/postgresql
     networks: [forgejo]
 
   forgejo:
@@ -68,7 +68,7 @@ services:
   #   # First start registers, then it runs the daemon automatically
   #   command: >
   #     sh -lc "forgejo-runner register --no-interactive --instance ${FORGEJO_ROOT_URL} --token ${FORGEJO_RUNNER_TOKEN} --name ${FORGEJO_RUNNER_NAME} --labels ${FORGEJO_RUNNER_LABELS} || true; forgejo-runner daemon"
-  #   networks: [forgejo]
+    # networks: [forgejo]
 
   dind:
     image: docker:29.2.1-dind
@@ -76,6 +76,7 @@ services:
     privileged: true
     restart: unless-stopped
     command: ["dockerd", "-H", "tcp://0.0.0.0:2375", "--tls=false"]
+    networks: [forgejo]
 
   runner:
     image: code.forgejo.org/forgejo/runner:12
@@ -83,6 +84,8 @@ services:
       - dind
     depends_on:
       dind:
+        condition: service_started
+      forgejo:
         condition: service_started
     container_name: forgejo-runner
     user: 1000:1000 # replace this with the UUID:GUID of the user you want to run the runner as
@@ -94,11 +97,12 @@ services:
       DOCKER_HOST: tcp://dind:2375
     volumes:
       # replace the left-hand side from the ':' with your own path
-      - ${DOCKER_VOLUME_STORAGE}/forgejo/runner:/data
+      - ${DOCKER_VOLUME_STORAGE}/forgejo/runner/data:/data
       - ${DOCKER_VOLUME_STORAGE}/forgejo/runner/config.yaml:/config.yaml
     restart: unless-stopped
-    # command: '/bin/sh -c "while : ; do sleep 1 ; done ;"'
-    command: '/bin/sh -c "sleep 5; forgejo-runner daemon --config /config.yaml"'
+    # First Time Setup
+    command: '/bin/sh -c "while : ; do sleep 1 ; done ;"'
+    # command: '/bin/sh -c "sleep 5; forgejo-runner daemon --config /config.yaml"'
 
 networks:
   forgejo:

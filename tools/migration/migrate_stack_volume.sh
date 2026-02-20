@@ -6,30 +6,27 @@ usage() {
 Usage:
   migrate_one_stack.sh --stack <stack_dir> [--new-root <dir>] [--old-root <dir>] [--dry] [--restart]
 
+What it does (single stack):
+  1) Finds bind mounts in compose that start with ${DOCKER_VOLUME_STORAGE}/...
+  2) Copies data from OLD_ROOT/<rel> -> NEW_ROOT/<rel>
+  3) Updates (or creates) <stack_dir>/.env to set:
+       DOCKER_VOLUME_STORAGE=<new-root>
+  4) Optionally restarts the stack (docker compose down/up)
+
 Inputs:
-  --stack <dir>      Folder containing a compose file:
-                     compose.yml|compose.yaml|docker-compose.yml|docker-compose.yaml
+  --stack <dir>      Folder containing compose.yml|compose.yaml|docker-compose.yml|docker-compose.yaml
   --new-root <dir>   Target root for migrated appdata (default: /srv/appdata)
-  --old-root <dir>   Source root to migrate FROM if .env lacks DOCKER_VOLUME_STORAGE
-                     Example: /mnt/nas/DockerServices
-  --dry              Print actions only; do not copy or edit files
-  --restart          Run: docker compose down && docker compose up -d after migration
+  --old-root <dir>   Source root to migrate FROM if .env doesn't define DOCKER_VOLUME_STORAGE
+  --dry              Print actions only; do not copy or modify files
+  --restart          Run: docker compose down && docker compose up -d
 
-Old root resolution:
-  1) If <stack_dir>/.env exists and sets DOCKER_VOLUME_STORAGE, use that
-  2) Else require --old-root
-
-What it migrates:
-  Only bind paths that start with:
-    ${DOCKER_VOLUME_STORAGE}/...
-  and rewrites those to:
-    <new-root>/...
+Notes:
+  - This script DOES NOT edit the compose file.
+  - It only migrates binds that use ${DOCKER_VOLUME_STORAGE}.
+  - It will create .env if missing so docker compose can resolve the variable.
 
 Examples:
-  # stack has .env with DOCKER_VOLUME_STORAGE
   ./migrate_one_stack.sh --stack /path/to/forgejo --dry
-
-  # stack has no .env (or no DOCKER_VOLUME_STORAGE)
   ./migrate_one_stack.sh --stack /path/to/forgejo --old-root /mnt/nas/DockerServices --new-root /srv/appdata --restart
 EOF
 }
@@ -67,15 +64,34 @@ find_compose_file() {
   return 1
 }
 
+# Safe-ish .env read (no sourcing). Supports:
+# DOCKER_VOLUME_STORAGE=/path
+# DOCKER_VOLUME_STORAGE="/path"
+read_env_var() {
+  local envfile="$1"
+  local key="$2"
+  [[ -f "$envfile" ]] || return 1
+
+  # grab last occurrence, strip "key=", strip quotes, strip trailing spaces
+  local line
+  line="$(grep -E "^[[:space:]]*${key}=" "$envfile" | tail -n 1 || true)"
+  [[ -n "$line" ]] || return 1
+
+  local val="${line#*=}"
+  # trim whitespace
+  val="$(echo "$val" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
+  # drop surrounding quotes if present
+  val="$(echo "$val" | sed -E 's/^"(.*)"$/\1/; s/^\x27(.*)\x27$/\1/')"
+
+  [[ -n "$val" ]] || return 1
+  echo "$val"
+}
+
 resolve_old_root() {
   local envfile="$STACK_DIR/.env"
   local old_root=""
 
-  if [[ -f "$envfile" ]]; then
-    # shellcheck disable=SC1090
-    source "$envfile" || true
-    old_root="${DOCKER_VOLUME_STORAGE:-}"
-  fi
+  old_root="$(read_env_var "$envfile" "DOCKER_VOLUME_STORAGE" || true)"
 
   if [[ -z "$old_root" ]]; then
     old_root="$OLD_ROOT_ARG"
@@ -83,8 +99,8 @@ resolve_old_root() {
 
   if [[ -z "$old_root" ]]; then
     echo "ERROR: Could not determine old root."
-    echo " - No DOCKER_VOLUME_STORAGE found in $envfile"
-    echo " - And --old-root was not provided"
+    echo " - No DOCKER_VOLUME_STORAGE in $envfile"
+    echo " - And --old-root not provided"
     exit 2
   fi
 
@@ -119,15 +135,29 @@ copy_path() {
   fi
 }
 
-rewrite_compose() {
-  local compose_file="$1"
-  local backup="$compose_file.bak.$(date +%F_%H%M%S)"
+update_env_file() {
+  local envfile="$STACK_DIR/.env"
+  local backup="$envfile.bak.$(date +%F_%H%M%S)"
 
   if [[ "$DRY" == "1" ]]; then
-    echo "DRY: would backup to $backup and replace \${DOCKER_VOLUME_STORAGE} -> $NEW_ROOT"
+    if [[ -f "$envfile" ]]; then
+      echo "DRY: would backup $envfile -> $backup and set DOCKER_VOLUME_STORAGE=$NEW_ROOT"
+    else
+      echo "DRY: would create $envfile with DOCKER_VOLUME_STORAGE=$NEW_ROOT"
+    fi
+    return 0
+  fi
+
+  if [[ -f "$envfile" ]]; then
+    cp "$envfile" "$backup"
+    if grep -qE '^[[:space:]]*DOCKER_VOLUME_STORAGE=' "$envfile"; then
+      # replace all occurrences to keep it consistent
+      sed -i -E "s#^[[:space:]]*DOCKER_VOLUME_STORAGE=.*#DOCKER_VOLUME_STORAGE=${NEW_ROOT}#g" "$envfile"
+    else
+      echo "DOCKER_VOLUME_STORAGE=${NEW_ROOT}" >> "$envfile"
+    fi
   else
-    cp "$compose_file" "$backup"
-    sed -i "s#\${DOCKER_VOLUME_STORAGE}#${NEW_ROOT}#g" "$compose_file"
+    printf "DOCKER_VOLUME_STORAGE=%s\n" "$NEW_ROOT" > "$envfile"
   fi
 }
 
@@ -152,7 +182,7 @@ log "Dry run: $DRY | Restart: $RESTART"
 binds="$(extract_binds "$compose_file")"
 if [[ -z "$binds" ]]; then
   echo "Nothing to migrate: no \${DOCKER_VOLUME_STORAGE} binds found in compose."
-  echo "TIP: This script only migrates binds that use \${DOCKER_VOLUME_STORAGE}."
+  echo "TIP: If this stack hardcodes /mnt/nas/... in compose, this script won’t touch it."
   exit 0
 fi
 
@@ -172,8 +202,7 @@ while IFS= read -r bind; do
   copy_path "$src" "$dst"
 done <<< "$binds"
 
-rewrite_compose "$compose_file"
+update_env_file
 restart_stack
 
 log "Done."
-echo "NOTE: This does NOT fix container-internal mount targets (e.g., Postgres should mount to /var/lib/postgresql/data). Review DB mounts manually."

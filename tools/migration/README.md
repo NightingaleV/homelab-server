@@ -1,4 +1,4 @@
-# README — `migrate_one_stack.sh`
+# README — `migrate_stack_volume.sh`
 
 This script migrates **one Docker Compose stack at a time** from a NAS-backed appdata path (e.g. `/mnt/nas/DockerServices/...`) to **local appdata** inside an LXC (default: `/srv/appdata/...`), and rewrites the compose file so it uses the new local path.
 
@@ -38,6 +38,15 @@ Given a stack directory (a folder containing `compose.yaml` / `docker-compose.ya
 
 ```bash
 apt update && apt install -y rsync
+```
+
+### Make Executable
+
+```bash
+#
+chmod +x migrate_stack_volume.sh
+# Git Remembers
+git update-index --chmod=+x migrate_stack_volume.sh
 ```
 
 ---
@@ -92,31 +101,31 @@ If neither exists, the script exits with an error (by design).
 Shows what it would copy and what it would rewrite, but changes nothing.
 
 ```bash
-./migrate_one_stack.sh --stack /path/to/stack --dry
+./migrate_stack_volume.sh --stack /path/to/stack --dry
 ```
 
 If the stack has **no `.env`**, specify `--old-root`:
 
 ```bash
-./migrate_one_stack.sh --stack /path/to/stack --old-root /mnt/nas/DockerServices --dry
+./migrate_stack_volume.sh --stack /path/to/stack --old-root /mnt/nas/DockerServices --dry
 ```
 
 ### Real migration (copy + rewrite)
 
 ```bash
-./migrate_one_stack.sh --stack /path/to/stack --new-root /srv/appdata
+./migrate_stack_volume.sh --stack /path/to/stack --new-root /srv/appdata
 ```
 
 ### Real migration + restart the stack
 
 ```bash
-./migrate_one_stack.sh --stack /path/to/stack --new-root /srv/appdata --restart
+./migrate_stack_volume.sh --stack /path/to/stack --new-root /srv/appdata --restart
 ```
 
 ### Minimal “no .env” example
 
 ```bash
-./migrate_one_stack.sh \
+./migrate_stack_volume.sh \
   --stack /srv/compose/forgejo \
   --old-root /mnt/nas/DockerServices \
   --new-root /srv/appdata \
@@ -170,7 +179,7 @@ docker compose up -d
 1. **Dry run**
 
    ```bash
-   ./migrate_one_stack.sh --stack /path/to/stack --old-root /mnt/nas/DockerServices --dry
+   ./migrate_stack_volume.sh --stack /path/to/stack --old-root /mnt/nas/DockerServices --dry
    ```
 
 2. **Stop stack manually** (optional but recommended for DB consistency)
@@ -183,7 +192,7 @@ docker compose up -d
 3. **Run migration**
 
    ```bash
-   ./migrate_one_stack.sh --stack /path/to/stack --old-root /mnt/nas/DockerServices --new-root /srv/appdata
+   ./migrate_stack_volume.sh --stack /path/to/stack --old-root /mnt/nas/DockerServices --new-root /srv/appdata
    ```
 
 4. **Start stack**
